@@ -7,7 +7,11 @@ import pandas as pd
 # Daten: Spieler Basisdaten (Name, Position, Nation, Alter)
 # ─────────────────────────────────────────
 
-API_KEY = "aacae5e2d76d414383ce52548763c4a8"
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+API_KEY = os.getenv("FOOTBALL_API_KEY")
 BASE_URL = "https://api.football-data.org/v4"
 
 HEADERS = {
