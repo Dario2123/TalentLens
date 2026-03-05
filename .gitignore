@@ -1,0 +1,13 @@
+# API Keys & Secrets
+.env
+
+# Scraper Output
+scraper/bundesliga_players.csv
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# VS Code
+.vscode/
