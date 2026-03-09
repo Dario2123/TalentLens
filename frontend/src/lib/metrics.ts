@@ -63,6 +63,11 @@ export function formatValue(value: number | undefined): string {
   return value.toFixed(2)
 }
 
+export function formatMillions(value: number | undefined): string {
+  if (value === undefined || value === null) return '—'
+  return `€${value.toFixed(1)}M`
+}
+
 // ─── Individual Metric Scores ────────────────────────────────────────────────
 
 export function calcGTS(p: PlayerStats): number {
