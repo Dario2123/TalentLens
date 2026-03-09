@@ -53,7 +53,7 @@ export type PlayerStats = {
   rating?: number
 }
 
-export function per90(value: number | undefined, minutes: number | undefined): number {
+export function per90(value: number | undefined | null, minutes: number | undefined | null): number {
   if (!value || !minutes || minutes === 0) return 0
   return (value / minutes) * 90
 }
