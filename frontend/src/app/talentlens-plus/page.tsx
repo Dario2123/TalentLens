@@ -156,29 +156,29 @@ function RoseChart({ player, allPlayers, metric }: { player: PlayerStats; allPla
       {/* Labels */}
       {stats.map((s, i) => {
         const angle = startAngle + i * angleStep
-        const labelR = r + 28
+        const labelR = r + 36
         const lx = cx + labelR * Math.cos(angle)
         const ly = cy + labelR * Math.sin(angle)
         const val = stats[i].getValue(player)
         return (
           <g key={i}>
             <text
-              x={lx} y={ly - 7}
+              x={lx} y={ly - 9}
               textAnchor="middle"
               dominantBaseline="middle"
-              fontSize="9.5"
-              fill="rgba(255,255,255,0.75)"
+              fontSize="12"
+              fill="rgba(255,255,255,0.9)"
               fontFamily="monospace"
-              fontWeight="600"
+              fontWeight="700"
             >
               {s.label}
             </text>
             <text
-              x={lx} y={ly + 8}
+              x={lx} y={ly + 10}
               textAnchor="middle"
               dominantBaseline="middle"
-              fontSize="11"
-              fontWeight="800"
+              fontSize="15"
+              fontWeight="900"
               fill="#00FF87"
               fontFamily="monospace"
             >
