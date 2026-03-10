@@ -464,6 +464,21 @@ export default function TalentLensPlus() {
               <p className="font-mono text-xs text-pitch-500 mt-1">
                 Misst wer das offensive Spiel dominiert — unabhängig von Toren und Assists
               </p>
+              <a
+                href="https://sincerefc.medium.com/a-mirage-of-counting-statistics-and-usage-rate-in-football-ee82c5a915f9"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '4px',
+                  fontFamily: 'var(--font-mono)', fontSize: '0.62rem',
+                  color: 'rgba(0,255,135,0.6)', marginTop: '8px',
+                  textDecoration: 'none', transition: 'color 0.15s',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.color = '#00FF87')}
+                onMouseLeave={e => (e.currentTarget.style.color = 'rgba(0,255,135,0.6)')}
+              >
+                ↗ Inspiriert von: &ldquo;Usage Rate in Football&rdquo; — sincerefc.medium.com
+              </a>
             </div>
           )}
         </div>
