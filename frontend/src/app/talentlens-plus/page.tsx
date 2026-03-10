@@ -108,13 +108,12 @@ export default function TalentLensPlus() {
                 {m.key}
               </button>
               {/* Tooltip */}
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-52 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
                 <div className="bg-pitch-800 border border-pitch-600 rounded-lg p-3 shadow-xl">
                   <p className="font-mono text-xs font-bold text-accent-green mb-1">{m.label}</p>
                   <p className="font-mono text-xs text-pitch-300 leading-relaxed">{m.desc}</p>
                   <p className="font-mono text-xs text-pitch-500 mt-1">{m.nba}</p>
                 </div>
-                <div className="w-2 h-2 bg-pitch-800 border-r border-b border-pitch-600 rotate-45 mx-auto -mt-1" />
               </div>
             </div>
           ))}
