@@ -58,9 +58,9 @@ export function per90(value: number | undefined | null, minutes: number | undefi
   return (value / minutes) * 90
 }
 
-export function formatValue(value: number | undefined | null): string {
+export function formatValue(value: number | undefined | null, decimals: number = 2): string {
   if (value === undefined || value === null) return '—'
-  return value.toFixed(2)
+  return value.toFixed(decimals)
 }
 
 export function formatMillions(value: number | undefined | null): string {
