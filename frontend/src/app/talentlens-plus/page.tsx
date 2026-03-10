@@ -46,6 +46,7 @@ export default function TalentLensPlus() {
   const [activeMetric, setActiveMetric] = useState<MetricKey>('TLS')
   const [posFilter, setPosFilter] = useState('ALL')
   const [minMinutes, setMinMinutes] = useState(900)
+  const [hoveredMetric, setHoveredMetric] = useState<MetricKey | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -94,11 +95,13 @@ export default function TalentLensPlus() {
         </div>
 
         {/* Metric Tabs */}
-        <div className="flex flex-wrap gap-2 mb-6">
+        <div className="flex flex-wrap gap-2 mb-8">
           {METRICS.map(m => (
-            <div key={m.key} className="relative group">
+            <div key={m.key} style={{ position: 'relative' }}>
               <button
                 onClick={() => setActiveMetric(m.key)}
+                onMouseEnter={() => setHoveredMetric(m.key)}
+                onMouseLeave={() => setHoveredMetric(null)}
                 className={`px-4 py-2 font-mono text-xs font-bold tracking-widest rounded transition-all ${
                   activeMetric === m.key
                     ? 'bg-accent-green text-pitch-950'
@@ -107,14 +110,18 @@ export default function TalentLensPlus() {
               >
                 {m.key}
               </button>
-              {/* Tooltip */}
-              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-52 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                <div className="bg-pitch-800 border border-pitch-600 rounded-lg p-3 shadow-xl">
-                  <p className="font-mono text-xs font-bold text-accent-green mb-1">{m.label}</p>
-                  <p className="font-mono text-xs text-pitch-300 leading-relaxed">{m.desc}</p>
-                  <p className="font-mono text-xs text-pitch-500 mt-1">{m.nba}</p>
+              {hoveredMetric === m.key && (
+                <div style={{
+                  position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)',
+                  marginTop: '8px', width: '220px', zIndex: 100,
+                  background: '#0d1f2d', border: '1px solid #1e3a4a',
+                  borderRadius: '8px', padding: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)'
+                }}>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', fontWeight: 700, color: '#00FF87', marginBottom: '4px' }}>{m.label}</p>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.5 }}>{m.desc}</p>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', marginTop: '4px' }}>{m.nba}</p>
                 </div>
-              </div>
+              )}
             </div>
           ))}
         </div>
