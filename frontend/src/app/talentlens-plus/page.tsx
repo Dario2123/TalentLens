@@ -96,17 +96,27 @@ export default function TalentLensPlus() {
         {/* Metric Tabs */}
         <div className="flex flex-wrap gap-2 mb-6">
           {METRICS.map(m => (
-            <button
-              key={m.key}
-              onClick={() => setActiveMetric(m.key)}
-              className={`px-4 py-2 font-mono text-xs font-bold tracking-widest rounded transition-all ${
-                activeMetric === m.key
-                  ? 'bg-accent-green text-pitch-950'
-                  : 'bg-pitch-800 text-pitch-300 hover:bg-pitch-700'
-              }`}
-            >
-              {m.key}
-            </button>
+            <div key={m.key} className="relative group">
+              <button
+                onClick={() => setActiveMetric(m.key)}
+                className={`px-4 py-2 font-mono text-xs font-bold tracking-widest rounded transition-all ${
+                  activeMetric === m.key
+                    ? 'bg-accent-green text-pitch-950'
+                    : 'bg-pitch-800 text-pitch-300 hover:bg-pitch-700'
+                }`}
+              >
+                {m.key}
+              </button>
+              {/* Tooltip */}
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                <div className="bg-pitch-800 border border-pitch-600 rounded-lg p-3 shadow-xl">
+                  <p className="font-mono text-xs font-bold text-accent-green mb-1">{m.label}</p>
+                  <p className="font-mono text-xs text-pitch-300 leading-relaxed">{m.desc}</p>
+                  <p className="font-mono text-xs text-pitch-500 mt-1">{m.nba}</p>
+                </div>
+                <div className="w-2 h-2 bg-pitch-800 border-r border-b border-pitch-600 rotate-45 mx-auto -mt-1" />
+              </div>
+            </div>
           ))}
         </div>
 
