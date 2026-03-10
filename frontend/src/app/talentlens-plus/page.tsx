@@ -101,7 +101,7 @@ function RoseChart({ player, allPlayers, metric }: { player: PlayerStats; allPla
   const rings = [0.25, 0.5, 0.75, 1.0]
 
   return (
-    <svg width="240" height="240" style={{ overflow: 'visible' }}>
+    <svg width="280" height="280" viewBox="-20 -20 280 280" style={{ overflow: 'visible' }}>
       {/* Grid rings */}
       {rings.map(ring => {
         const pts = stats.map((_, i) => toPoint(ring, i))
@@ -156,28 +156,29 @@ function RoseChart({ player, allPlayers, metric }: { player: PlayerStats; allPla
       {/* Labels */}
       {stats.map((s, i) => {
         const angle = startAngle + i * angleStep
-        const labelR = r + 22
+        const labelR = r + 28
         const lx = cx + labelR * Math.cos(angle)
         const ly = cy + labelR * Math.sin(angle)
         const val = stats[i].getValue(player)
         return (
           <g key={i}>
             <text
-              x={lx} y={ly - 5}
+              x={lx} y={ly - 7}
               textAnchor="middle"
               dominantBaseline="middle"
-              fontSize="7.5"
-              fill="rgba(255,255,255,0.45)"
+              fontSize="9.5"
+              fill="rgba(255,255,255,0.75)"
               fontFamily="monospace"
+              fontWeight="600"
             >
               {s.label}
             </text>
             <text
-              x={lx} y={ly + 7}
+              x={lx} y={ly + 8}
               textAnchor="middle"
               dominantBaseline="middle"
-              fontSize="8.5"
-              fontWeight="700"
+              fontSize="11"
+              fontWeight="800"
               fill="#00FF87"
               fontFamily="monospace"
             >

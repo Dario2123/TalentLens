@@ -48,9 +48,10 @@ function Nav() {
         <span style={{
           fontFamily: 'var(--font-mono)',
           fontSize: '0.6rem',
-          color: 'rgba(255,255,255,0.3)',
+          color: 'rgba(255,255,255,0.55)',
           marginLeft: '8px',
           letterSpacing: '0.1em',
+          fontWeight: 600,
         }}>
           BUNDESLIGA 25/26
         </span>
@@ -66,8 +67,9 @@ function Nav() {
         <span style={{
           fontFamily: 'var(--font-mono)',
           fontSize: '0.6rem',
-          color: 'rgba(255,255,255,0.2)',
+          color: 'rgba(255,255,255,0.5)',
           letterSpacing: '0.05em',
+          fontWeight: 600,
         }}>
           430 SPIELER · SAISON 25/26
         </span>
