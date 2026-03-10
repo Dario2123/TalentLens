@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState, useMemo } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { supabase, PlayerWithStats } from '../../lib/supabase'
 import { per90, formatValue, formatMillions } from '../../lib/metrics'
 
@@ -32,6 +33,9 @@ const DEFAULT_FILTERS: FilterConfig = {
 }
 
 export default function Moneyball() {
+  const searchParams = useSearchParams()
+  const currentLeague = searchParams.get('league') || 'Bundesliga'
+
   const [players, setPlayers] = useState<PlayerWithStats[]>([])
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState<FilterConfig>(DEFAULT_FILTERS)
@@ -39,18 +43,20 @@ export default function Moneyball() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
   useEffect(() => {
+    setPlayers([])
+    setLoading(true)
     async function load() {
       const { data } = await supabase
         .from('players')
         .select('*, player_stats(*)')
-        .eq('league', 'Bundesliga')
+        .eq('league', currentLeague)
       if (data) {
         setPlayers(data.map((p: any) => ({ ...p, ...(p.player_stats?.[0] ?? {}) })))
       }
       setLoading(false)
     }
     load()
-  }, [])
+  }, [currentLeague])
 
   const setFilter = (key: keyof FilterConfig, val: string) =>
     setFilters(f => ({ ...f, [key]: val }))
@@ -90,16 +96,13 @@ export default function Moneyball() {
           MONEYBALL SCOUT
         </h1>
         <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)', marginTop: '4px' }}>
-          {filtered.length} Spieler matchen deinen Kriterien
+          {filtered.length} Spieler matchen deinen Kriterien · {currentLeague}
           {activeFilters > 0 && <span style={{ color: 'var(--accent-green)', marginLeft: '8px' }}>· {activeFilters} Filter aktiv</span>}
         </p>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: '20px', alignItems: 'start' }}>
-
-        {/* Filter Panel */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-
           <FilterSection title="PROFIL">
             <select className="tl-input" value={filters.position} onChange={e => setFilter('position', e.target.value)}>
               {['Alle', 'F', 'M', 'D', 'G'].map(p => <option key={p}>{p}</option>)}
@@ -136,7 +139,6 @@ export default function Moneyball() {
           </button>
         </div>
 
-        {/* Results */}
         <div className="tl-card" style={{ overflowX: 'auto' }}>
           {filtered.length === 0 ? (
             <div style={{ padding: '60px', textAlign: 'center' }}>
@@ -172,7 +174,8 @@ export default function Moneyball() {
                 {filtered.map((p, i) => (
                   <tr key={p.sofascore_id}>
                     <td><span className={`rank-badge ${i < 3 ? 'top3' : ''}`}>{i + 1}</span></td>
-                    <td><span style={{ color: '#fff', fontWeight: 500 }}>{p.name}</span>
+                    <td>
+                      <span style={{ color: '#fff', fontWeight: 500 }}>{p.name}</span>
                       <span style={{ marginLeft: '8px', fontSize: '0.65rem', color: 'rgba(255,255,255,0.3)' }}>{p.team}</span>
                     </td>
                     <td><span className={`pos-badge pos-${p.position}`}>{p.position}</span></td>
@@ -184,9 +187,7 @@ export default function Moneyball() {
                     <td>{formatValue(per90(p.accurate_final_third_passes, p.minutes_played))}</td>
                     <td>{formatValue(per90(p.tackles, p.minutes_played))}</td>
                     <td>{formatValue(per90(p.successful_dribbles, p.minutes_played))}</td>
-                    <td style={{ color: (p.rating ?? 0) >= 7.5 ? 'var(--accent-green)' : undefined }}>
-                      {formatValue(p.rating)}
-                    </td>
+                    <td style={{ color: (p.rating ?? 0) >= 7.5 ? 'var(--accent-green)' : undefined }}>{formatValue(p.rating)}</td>
                     <td style={{ color: 'rgba(255,255,255,0.4)' }}>{p.minutes_played ?? '—'}</td>
                   </tr>
                 ))}
@@ -211,9 +212,7 @@ function FilterSection({ title, children }: { title: string; children: React.Rea
 function RangeInput({ label, minKey, maxKey, filters, setFilter, placeholder }: any) {
   return (
     <div>
-      <label style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em', fontFamily: 'var(--font-display)', display: 'block', marginBottom: '4px' }}>
-        {label}
-      </label>
+      <label style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em', fontFamily: 'var(--font-display)', display: 'block', marginBottom: '4px' }}>{label}</label>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
         <input className="tl-input" type="number" placeholder={placeholder[0]} value={filters[minKey]} onChange={e => setFilter(minKey, e.target.value)} />
         <input className="tl-input" type="number" placeholder={placeholder[1]} value={filters[maxKey]} onChange={e => setFilter(maxKey, e.target.value)} />
@@ -225,9 +224,7 @@ function RangeInput({ label, minKey, maxKey, filters, setFilter, placeholder }: 
 function StatFilter({ label, filterKey, filters, setFilter, placeholder }: any) {
   return (
     <div>
-      <label style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em', fontFamily: 'var(--font-display)', display: 'block', marginBottom: '4px' }}>
-        {label}
-      </label>
+      <label style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em', fontFamily: 'var(--font-display)', display: 'block', marginBottom: '4px' }}>{label}</label>
       <input className="tl-input" type="number" step="0.1" placeholder={placeholder} value={filters[filterKey]} onChange={e => setFilter(filterKey, e.target.value)} />
     </div>
   )

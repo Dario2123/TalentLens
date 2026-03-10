@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import {
   PlayerStats,
@@ -351,6 +352,9 @@ function getScore(p: PlayerStats, key: MetricKey, allPlayers: PlayerStats[]): nu
 }
 
 export default function TalentLensPlus() {
+  const searchParams = useSearchParams()
+  const currentLeague = searchParams.get('league') || 'Bundesliga'
+
   const [players, setPlayers] = useState<PlayerStats[]>([])
   const [loading, setLoading] = useState(true)
   const [activeMetric, setActiveMetric] = useState<MetricKey>('TLS')
@@ -361,11 +365,13 @@ export default function TalentLensPlus() {
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerStats | null>(null)
 
   useEffect(() => {
+    setPlayers([])
+    setLoading(true)
     async function load() {
       const { data } = await supabase
         .from('players')
         .select('*, player_stats(*)')
-        .eq('league', 'Bundesliga')
+        .eq('league', currentLeague)
       if (data) {
         const flat = data.map((p: any) => ({
           ...p,
@@ -376,7 +382,7 @@ export default function TalentLensPlus() {
       setLoading(false)
     }
     load()
-  }, [])
+  }, [currentLeague])
 
   const filtered = players.filter(p =>
     (p.minutes_played || 0) >= minMinutes &&
@@ -409,7 +415,7 @@ export default function TalentLensPlus() {
             TALENTLENS<span className="text-accent-green">+</span>
           </h1>
           <p className="text-pitch-400 font-mono text-sm">
-            NBA-inspirierte Composite Metrics — über traditionelle Statistiken hinaus
+            NBA-inspirierte Composite Metrics — {currentLeague}
           </p>
         </div>
 

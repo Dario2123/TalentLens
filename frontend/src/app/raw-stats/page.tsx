@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState, useMemo } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { supabase, PlayerWithStats } from '../../lib/supabase'
 import { per90, formatValue, formatMillions } from '../../lib/metrics'
 
@@ -36,6 +37,9 @@ const POSITIONS = ['Alle', 'F', 'M', 'D', 'G']
 const MIN_MINUTES = [0, 90, 270, 450, 900]
 
 export default function RawStats() {
+  const searchParams = useSearchParams()
+  const currentLeague = searchParams.get('league') || 'Bundesliga'
+
   const [players, setPlayers] = useState<PlayerWithStats[]>([])
   const [loading, setLoading] = useState(true)
   const [sortKey, setSortKey] = useState('expected_goals')
@@ -47,11 +51,13 @@ export default function RawStats() {
   const [search, setSearch] = useState('')
 
   useEffect(() => {
+    setPlayers([])
+    setLoading(true)
     async function load() {
       const { data } = await supabase
         .from('players')
         .select('*, player_stats(*)')
-        .eq('league', 'Bundesliga')
+        .eq('league', currentLeague)
       if (data) {
         const flat = data.map((p: any) => ({
           ...p,
@@ -62,7 +68,7 @@ export default function RawStats() {
       setLoading(false)
     }
     load()
-  }, [])
+  }, [currentLeague])
 
   const visibleCols = useMemo(() =>
     STAT_COLUMNS.filter(c => group === 'Alle' || c.group === group),
@@ -101,40 +107,27 @@ export default function RawStats() {
 
   return (
     <div className="fade-in">
-      {/* Header */}
       <div style={{ marginBottom: '24px' }}>
         <p className="section-label">Modul 01</p>
-        <h1 style={{
-          fontFamily: 'var(--font-display)', fontWeight: 800,
-          fontSize: '2.2rem', letterSpacing: '0.02em', color: '#fff',
-        }}>RAW STATS EXPLORER</h1>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '2.2rem', letterSpacing: '0.02em', color: '#fff' }}>
+          RAW STATS EXPLORER
+        </h1>
         <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)', marginTop: '4px' }}>
-          {sorted.length} Spieler · Saison 25/26
+          {sorted.length} Spieler · {currentLeague} · Saison 25/26
         </p>
       </div>
 
-      {/* Controls */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '20px', alignItems: 'center' }}>
-        <input
-          className="tl-input"
-          style={{ width: '200px' }}
-          placeholder="Spieler suchen..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-
+        <input className="tl-input" style={{ width: '200px' }} placeholder="Spieler suchen..." value={search} onChange={e => setSearch(e.target.value)} />
         <select className="tl-input" style={{ width: '140px' }} value={group} onChange={e => setGroup(e.target.value)}>
           {GROUPS.map(g => <option key={g}>{g}</option>)}
         </select>
-
         <select className="tl-input" style={{ width: '110px' }} value={posFilter} onChange={e => setPosFilter(e.target.value)}>
           {POSITIONS.map(p => <option key={p}>{p === 'Alle' ? 'Position' : p}</option>)}
         </select>
-
         <select className="tl-input" style={{ width: '150px' }} value={minMin} onChange={e => setMinMin(Number(e.target.value))}>
           {MIN_MINUTES.map(m => <option key={m} value={m}>{m === 0 ? 'Alle Minuten' : `Min. ${m} Min.`}</option>)}
         </select>
-
         <button
           onClick={() => setPer90Mode(m => !m)}
           style={{
@@ -150,7 +143,6 @@ export default function RawStats() {
         </button>
       </div>
 
-      {/* Table */}
       <div className="tl-card" style={{ overflowX: 'auto' }}>
         <table className="data-table">
           <thead>
@@ -160,17 +152,9 @@ export default function RawStats() {
               <th>Team</th>
               <th>Pos</th>
               {visibleCols.map(col => (
-                <th
-                  key={col.key}
-                  onClick={() => toggleSort(col.key)}
-                  style={{ color: sortKey === col.key ? '#fff' : undefined }}
-                >
+                <th key={col.key} onClick={() => toggleSort(col.key)} style={{ color: sortKey === col.key ? '#fff' : undefined }}>
                   {col.label}
-                  {sortKey === col.key && (
-                    <span style={{ marginLeft: '4px', color: 'var(--accent-green)' }}>
-                      {sortDir === 'desc' ? '↓' : '↑'}
-                    </span>
-                  )}
+                  {sortKey === col.key && <span style={{ marginLeft: '4px', color: 'var(--accent-green)' }}>{sortDir === 'desc' ? '↓' : '↑'}</span>}
                 </th>
               ))}
             </tr>
@@ -179,32 +163,22 @@ export default function RawStats() {
             {sorted.map((p, i) => {
               const sortVal = getValue(p, sortKey)
               const barWidth = sortVal != null ? Math.round((sortVal / maxVal) * 100) : 0
-
               return (
                 <tr key={p.sofascore_id}>
-                  <td>
-                    <span className={`rank-badge ${i < 3 ? 'top3' : ''}`}>{i + 1}</span>
-                  </td>
+                  <td><span className={`rank-badge ${i < 3 ? 'top3' : ''}`}>{i + 1}</span></td>
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{ color: '#fff', fontWeight: 500 }}>{p.name}</span>
-                      <div className="stat-bar">
-                        <div className="stat-bar-fill" style={{ width: `${barWidth}%` }} />
-                      </div>
+                      <div className="stat-bar"><div className="stat-bar-fill" style={{ width: `${barWidth}%` }} /></div>
                     </div>
                   </td>
                   <td style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.7rem' }}>{p.team}</td>
-                  <td>
-                    <span className={`pos-badge pos-${p.position}`}>{p.position}</span>
-                  </td>
+                  <td><span className={`pos-badge pos-${p.position}`}>{p.position}</span></td>
                   {visibleCols.map(col => {
                     const val = getValue(p, col.key)
                     const isSort = col.key === sortKey
                     return (
-                      <td key={col.key} style={{
-                        color: isSort ? '#fff' : 'rgba(255,255,255,0.65)',
-                        fontWeight: isSort ? 500 : 400,
-                      }}>
+                      <td key={col.key} style={{ color: isSort ? '#fff' : 'rgba(255,255,255,0.65)', fontWeight: isSort ? 500 : 400 }}>
                         {formatValue(val, col.key.endsWith('_pct') ? 1 : 2)}
                       </td>
                     )
