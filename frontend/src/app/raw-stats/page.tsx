@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase, PlayerWithStats } from '../../lib/supabase'
 import { per90, formatValue, formatMillions } from '../../lib/metrics'
@@ -36,7 +36,7 @@ const GROUPS = ['Alle', 'Offensiv', 'Pässe', 'Duell', 'Defensiv', 'Ballbesitz',
 const POSITIONS = ['Alle', 'F', 'M', 'D', 'G']
 const MIN_MINUTES = [0, 90, 270, 450, 900]
 
-export default function RawStats() {
+function RawStatsInner() {
   const searchParams = useSearchParams()
   const currentLeague = searchParams.get('league') || 'Bundesliga'
 
@@ -200,5 +200,21 @@ function LoadingState() {
       <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)' }}>LADE DATEN...</p>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
+  )
+}
+
+function RawStatsInner() {
+  return (
+    <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}><div style={{ width: '32px', height: '32px', border: '2px solid rgba(0,255,135,0.2)', borderTopColor: '#00FF87', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} /><style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style></div>}>
+      <RawStatsInner />
+    </Suspense>
+  )
+}
+
+export default function RawStats() {
+  return (
+    <Suspense fallback={}>
+      <RawStatsInner />
+    </Suspense>
   )
 }

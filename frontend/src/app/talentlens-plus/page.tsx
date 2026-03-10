@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import {
@@ -351,7 +351,7 @@ function getScore(p: PlayerStats, key: MetricKey, allPlayers: PlayerStats[]): nu
   }
 }
 
-export default function TalentLensPlus() {
+function TalentLensPlusInner() {
   const searchParams = useSearchParams()
   const currentLeague = searchParams.get('league') || 'Bundesliga'
 
@@ -655,5 +655,21 @@ export default function TalentLensPlus() {
         )}
       </div>
     </div>
+  )
+}
+
+function TalentLensPlusInner() {
+  return (
+    <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}><div style={{ width: '32px', height: '32px', border: '2px solid rgba(0,255,135,0.2)', borderTopColor: '#00FF87', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} /><style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style></div>}>
+      <TalentLensPlusInner />
+    </Suspense>
+  )
+}
+
+export default function TalentLensPlus() {
+  return (
+    <Suspense fallback={}>
+      <TalentLensPlusInner />
+    </Suspense>
   )
 }
