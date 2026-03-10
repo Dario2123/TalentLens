@@ -245,11 +245,18 @@ export default function TalentLensPlus() {
                       {METRICS.map(m => (
                         <th
                           key={m.key}
-                          className={`px-2 py-2 text-right ${
+                          className={`px-2 py-2 text-right relative group cursor-help ${
                             activeMetric === m.key ? 'text-accent-green' : 'text-pitch-500'
                           }`}
                         >
                           {m.key}
+                          <div className="absolute bottom-full right-0 mb-2 w-52 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                            <div className="bg-pitch-800 border border-pitch-600 rounded-lg p-3 shadow-xl text-left">
+                              <p className="font-mono text-xs font-bold text-accent-green mb-1">{m.label}</p>
+                              <p className="font-mono text-xs text-pitch-300 leading-relaxed">{m.desc}</p>
+                              <p className="font-mono text-xs text-pitch-500 mt-1">{m.nba}</p>
+                            </div>
+                          </div>
                         </th>
                       ))}
                     </tr>
