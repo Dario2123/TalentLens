@@ -19,6 +19,31 @@ const METRICS: { key: MetricKey; label: string; desc: string; nba: string }[] = 
   { key: 'OUR', label: 'Offensive Usage Rate', desc: '% der offensiven Aktionen des Teams', nba: '≈ NBA Usage Rate' },
 ]
 
+const TOOLTIP_STYLE: React.CSSProperties = {
+  position: 'absolute',
+  top: '110%',
+  left: '50%',
+  transform: 'translateX(-50%)',
+  width: '220px',
+  zIndex: 9999,
+  background: '#0a1929',
+  border: '1px solid #00FF87',
+  borderRadius: '8px',
+  padding: '12px',
+  boxShadow: '0 8px 32px rgba(0,0,0,0.8)',
+  pointerEvents: 'none',
+}
+
+function MetricTooltip({ m }: { m: typeof METRICS[0] }) {
+  return (
+    <div style={TOOLTIP_STYLE}>
+      <p style={{ fontFamily: 'monospace', fontSize: '0.7rem', fontWeight: 700, color: '#00FF87', marginBottom: '4px' }}>{m.label}</p>
+      <p style={{ fontFamily: 'monospace', fontSize: '0.65rem', color: 'rgba(255,255,255,0.7)', lineHeight: 1.5 }}>{m.desc}</p>
+      <p style={{ fontFamily: 'monospace', fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', marginTop: '4px' }}>{m.nba}</p>
+    </div>
+  )
+}
+
 function getScore(p: PlayerStats, key: MetricKey, allPlayers: PlayerStats[]): number {
   switch (key) {
     case 'TLS': return calcTLS(p)
@@ -46,7 +71,8 @@ export default function TalentLensPlus() {
   const [activeMetric, setActiveMetric] = useState<MetricKey>('TLS')
   const [posFilter, setPosFilter] = useState('ALL')
   const [minMinutes, setMinMinutes] = useState(900)
-  const [hoveredMetric, setHoveredMetric] = useState<MetricKey | null>(null)
+  const [hoveredTab, setHoveredTab] = useState<MetricKey | null>(null)
+  const [hoveredCol, setHoveredCol] = useState<MetricKey | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -78,7 +104,6 @@ export default function TalentLensPlus() {
 
   const top25 = ranked.slice(0, 25)
   const maxScore = top25[0]?.score || 1
-
   const metric = METRICS.find(m => m.key === activeMetric)!
 
   return (
@@ -95,33 +120,30 @@ export default function TalentLensPlus() {
         </div>
 
         {/* Metric Tabs */}
-        <div className="flex flex-wrap gap-2 mb-8">
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '32px' }}>
           {METRICS.map(m => (
             <div key={m.key} style={{ position: 'relative' }}>
               <button
                 onClick={() => setActiveMetric(m.key)}
-                onMouseEnter={() => setHoveredMetric(m.key)}
-                onMouseLeave={() => setHoveredMetric(null)}
-                className={`px-4 py-2 font-mono text-xs font-bold tracking-widest rounded transition-all ${
-                  activeMetric === m.key
-                    ? 'bg-accent-green text-pitch-950'
-                    : 'bg-pitch-800 text-pitch-300 hover:bg-pitch-700'
-                }`}
+                onMouseEnter={() => setHoveredTab(m.key)}
+                onMouseLeave={() => setHoveredTab(null)}
+                style={{
+                  padding: '8px 16px',
+                  fontFamily: 'monospace',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  letterSpacing: '0.1em',
+                  borderRadius: '6px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: activeMetric === m.key ? '#00FF87' : '#0d1f2d',
+                  color: activeMetric === m.key ? '#040A0F' : 'rgba(255,255,255,0.6)',
+                  transition: 'all 0.15s',
+                }}
               >
                 {m.key}
               </button>
-              {hoveredMetric === m.key && (
-                <div style={{
-                  position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)',
-                  marginTop: '8px', width: '220px', zIndex: 100,
-                  background: '#0d1f2d', border: '1px solid #1e3a4a',
-                  borderRadius: '8px', padding: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)'
-                }}>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', fontWeight: 700, color: '#00FF87', marginBottom: '4px' }}>{m.label}</p>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.5 }}>{m.desc}</p>
-                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', marginTop: '4px' }}>{m.nba}</p>
-                </div>
-              )}
+              {hoveredTab === m.key && <MetricTooltip m={m} />}
             </div>
           ))}
         </div>
@@ -251,18 +273,13 @@ export default function TalentLensPlus() {
                       {METRICS.map(m => (
                         <th
                           key={m.key}
-                          className={`px-2 py-2 text-right relative group cursor-help ${
-                            activeMetric === m.key ? 'text-accent-green' : 'text-pitch-500'
-                          }`}
+                          onMouseEnter={() => setHoveredCol(m.key)}
+                          onMouseLeave={() => setHoveredCol(null)}
+                          style={{ position: 'relative', padding: '8px', textAlign: 'right', cursor: 'help',
+                            color: activeMetric === m.key ? '#00FF87' : 'rgba(255,255,255,0.3)' }}
                         >
                           {m.key}
-                          <div className="absolute bottom-full right-0 mb-2 w-52 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                            <div className="bg-pitch-800 border border-pitch-600 rounded-lg p-3 shadow-xl text-left">
-                              <p className="font-mono text-xs font-bold text-accent-green mb-1">{m.label}</p>
-                              <p className="font-mono text-xs text-pitch-300 leading-relaxed">{m.desc}</p>
-                              <p className="font-mono text-xs text-pitch-500 mt-1">{m.nba}</p>
-                            </div>
-                          </div>
+                          {hoveredCol === m.key && <MetricTooltip m={m} />}
                         </th>
                       ))}
                     </tr>
