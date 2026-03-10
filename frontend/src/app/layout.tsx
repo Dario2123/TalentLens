@@ -2,6 +2,8 @@
 import './globals.css'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -20,6 +22,23 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
 function Nav() {
   const path = usePathname()
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function fetchLastUpdated() {
+      const { data } = await supabase
+        .from('player_stats')
+        .select('created_at')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+      if (data?.created_at) {
+        const date = new Date(data.created_at)
+        setLastUpdated(date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' }))
+      }
+    }
+    fetchLastUpdated()
+  }, [])
 
   return (
     <nav style={{
@@ -71,7 +90,7 @@ function Nav() {
           letterSpacing: '0.05em',
           fontWeight: 600,
         }}>
-          430 SPIELER · SAISON 25/26
+          430 SPIELER · SAISON 25/26{lastUpdated ? ` · Stand ${lastUpdated}` : ''}
         </span>
         <div style={{
           width: '6px', height: '6px', borderRadius: '50%',
