@@ -50,14 +50,13 @@ export default function TalentLensPlus() {
   useEffect(() => {
     async function load() {
       const { data } = await supabase
-        .from('player_stats')
-        .select('*, players(name, team, league, position, nationality, age, height, market_value)')
-        .eq('season', '2024/25')
+        .from('players')
+        .select('*, player_stats(*)')
+        .eq('league', 'Bundesliga')
       if (data) {
-        const flat = data.map((r: any) => ({
-          ...r.players,
-          ...r,
-          players: undefined,
+        const flat = data.map((p: any) => ({
+          ...p,
+          ...(p.player_stats?.[0] ?? {}),
         }))
         setPlayers(flat)
       }
@@ -67,7 +66,7 @@ export default function TalentLensPlus() {
   }, [])
 
   const filtered = players.filter(p =>
-    (p.minutesPlayed || 0) >= minMinutes &&
+    (p.minutes_played || 0) >= minMinutes &&
     (posFilter === 'ALL' || p.position === posFilter)
   )
 
@@ -85,7 +84,6 @@ export default function TalentLensPlus() {
     <div className="min-h-screen bg-pitch-950 text-white p-6">
       <div className="max-w-7xl mx-auto">
 
-        {/* Header */}
         <div className="mb-8">
           <h1 className="font-display text-4xl font-black tracking-wider text-white mb-1">
             TALENTLENS<span className="text-accent-green">+</span>
@@ -112,7 +110,7 @@ export default function TalentLensPlus() {
           ))}
         </div>
 
-        {/* Active Metric Info */}
+        {/* Metric Info */}
         <div className="bg-pitch-900 border border-pitch-700 rounded-lg p-4 mb-6">
           <div className="flex items-start justify-between flex-wrap gap-2">
             <div>
@@ -177,7 +175,7 @@ export default function TalentLensPlus() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-            {/* Top 25 Ranking */}
+            {/* Top 25 */}
             <div className="bg-pitch-900 border border-pitch-700 rounded-lg overflow-hidden">
               <div className="px-4 py-3 border-b border-pitch-700">
                 <h3 className="font-mono text-xs font-bold text-pitch-300 tracking-widest">
@@ -209,7 +207,7 @@ export default function TalentLensPlus() {
                             style={{ width: `${(p.score / maxScore) * 100}%` }}
                           />
                         </div>
-                        <span className="font-mono text-xs text-accent-green font-bold w-10 text-right">
+                        <span className="font-mono text-xs text-accent-green font-bold w-12 text-right">
                           {activeMetric === 'OUR' ? `${p.score.toFixed(1)}%` : p.score.toFixed(1)}
                         </span>
                       </div>
@@ -222,7 +220,7 @@ export default function TalentLensPlus() {
               </div>
             </div>
 
-            {/* Score Matrix Top 15 */}
+            {/* Score Matrix */}
             <div className="bg-pitch-900 border border-pitch-700 rounded-lg overflow-hidden">
               <div className="px-4 py-3 border-b border-pitch-700">
                 <h3 className="font-mono text-xs font-bold text-pitch-300 tracking-widest">
