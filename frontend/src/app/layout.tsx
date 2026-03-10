@@ -28,12 +28,12 @@ function Nav() {
     async function fetchLastUpdated() {
       const { data } = await supabase
         .from('player_stats')
-        .select('created_at')
-        .order('created_at', { ascending: false })
+        .select('updated_at')
+        .order('updated_at', { ascending: false })
         .limit(1)
         .single()
-      if (data?.created_at) {
-        const date = new Date(data.created_at)
+      if (data?.updated_at) {
+        const date = new Date(data.updated_at)
         setLastUpdated(date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' }))
       }
     }
