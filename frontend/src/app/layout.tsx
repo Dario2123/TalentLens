@@ -59,6 +59,7 @@ function Nav() {
       <NavLink href="/raw-stats" active={path === '/raw-stats'} label="Raw Stats" />
       <NavLink href="/moneyball" active={path === '/moneyball'} label="Moneyball" />
       <NavLink href="/talentlens-plus" active={path === '/talentlens-plus'} label="TalentLens+" badge />
+      <NavLink href="/about" active={path === '/about'} label="About" />
 
       {/* Right side */}
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '12px' }}>
