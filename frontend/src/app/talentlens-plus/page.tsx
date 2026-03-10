@@ -19,24 +19,24 @@ const METRICS: { key: MetricKey; label: string; desc: string; nba: string }[] = 
   { key: 'OUR', label: 'Offensive Usage Rate', desc: '% der offensiven Aktionen des Teams', nba: '≈ NBA Usage Rate' },
 ]
 
-const TOOLTIP_STYLE: React.CSSProperties = {
-  position: 'absolute',
-  top: '110%',
-  left: '50%',
-  transform: 'translateX(-50%)',
-  width: '220px',
-  zIndex: 9999,
-  background: '#0a1929',
-  border: '1px solid #00FF87',
-  borderRadius: '8px',
-  padding: '12px',
-  boxShadow: '0 8px 32px rgba(0,0,0,0.8)',
-  pointerEvents: 'none',
-}
-
-function MetricTooltip({ m }: { m: typeof METRICS[0] }) {
+function MetricTooltip({ m, alignRight }: { m: typeof METRICS[0], alignRight?: boolean }) {
+  const style: React.CSSProperties = {
+    position: 'absolute',
+    top: '110%',
+    left: alignRight ? 'auto' : '50%',
+    right: alignRight ? '0' : 'auto',
+    transform: alignRight ? 'none' : 'translateX(-50%)',
+    width: '220px',
+    zIndex: 9999,
+    background: '#0a1929',
+    border: '1px solid #00FF87',
+    borderRadius: '8px',
+    padding: '12px',
+    boxShadow: '0 8px 32px rgba(0,0,0,0.8)',
+    pointerEvents: 'none',
+  }
   return (
-    <div style={TOOLTIP_STYLE}>
+    <div style={style}>
       <p style={{ fontFamily: 'monospace', fontSize: '0.7rem', fontWeight: 700, color: '#00FF87', marginBottom: '4px' }}>{m.label}</p>
       <p style={{ fontFamily: 'monospace', fontSize: '0.65rem', color: 'rgba(255,255,255,0.7)', lineHeight: 1.5 }}>{m.desc}</p>
       <p style={{ fontFamily: 'monospace', fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', marginTop: '4px' }}>{m.nba}</p>
@@ -143,7 +143,7 @@ export default function TalentLensPlus() {
               >
                 {m.key}
               </button>
-              {hoveredTab === m.key && <MetricTooltip m={m} />}
+              {hoveredTab === m.key && <MetricTooltip m={m} alignRight={m.key === 'OUR' || m.key === 'PBC'} />}
             </div>
           ))}
         </div>
@@ -279,7 +279,7 @@ export default function TalentLensPlus() {
                             color: activeMetric === m.key ? '#00FF87' : 'rgba(255,255,255,0.3)' }}
                         >
                           {m.key}
-                          {hoveredCol === m.key && <MetricTooltip m={m} />}
+                          {hoveredCol === m.key && <MetricTooltip m={m} alignRight={m.key === 'OUR' || m.key === 'PBC'} />}
                         </th>
                       ))}
                     </tr>
