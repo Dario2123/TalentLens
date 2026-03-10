@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import {
   PlayerStats,
   calcTLS, calcGTS, calcCOR, calcDIS, calcPBC,
-  calcOffensiveUsageRate
+  calcOffensiveUsageRate, per90
 } from '@/lib/metrics'
 
 type MetricKey = 'TLS' | 'GTS' | 'COR' | 'DIS' | 'PBC' | 'OUR'
@@ -19,7 +19,298 @@ const METRICS: { key: MetricKey; label: string; desc: string; nba: string }[] = 
   { key: 'OUR', label: 'Offensive Usage Rate', desc: '% der offensiven Aktionen des Teams', nba: '≈ NBA Usage Rate' },
 ]
 
-function MetricTooltip({ m, alignRight }: { m: typeof METRICS[0], alignRight?: boolean }) {
+// Stats per metric with labels and extractor functions
+const METRIC_STATS: Record<MetricKey, { label: string; getValue: (p: PlayerStats) => number }[]> = {
+  TLS: [
+    { label: 'Rating', getValue: p => p.rating ?? 0 },
+    { label: 'xG/90', getValue: p => per90(p.expected_goals, p.minutes_played) ?? 0 },
+    { label: 'xA/90', getValue: p => per90(p.expected_assists, p.minutes_played) ?? 0 },
+    { label: 'Tackles/90', getValue: p => per90(p.tackles_won, p.minutes_played) ?? 0 },
+    { label: 'Dribbles/90', getValue: p => per90(p.successful_dribbles, p.minutes_played) ?? 0 },
+    { label: 'Key Passes/90', getValue: p => per90(p.key_passes, p.minutes_played) ?? 0 },
+  ],
+  GTS: [
+    { label: 'xG/90', getValue: p => per90(p.expected_goals, p.minutes_played) ?? 0 },
+    { label: 'Schüsse/90', getValue: p => per90(p.total_shots, p.minutes_played) ?? 0 },
+    { label: 'Schüsse auf Tor %', getValue: p => p.shots_on_target ?? 0 },
+    { label: 'Big Chances/90', getValue: p => per90(p.big_chances_created, p.minutes_played) ?? 0 },
+    { label: 'Headers Won %', getValue: p => p.aerial_duels_won_pct ?? 0 },
+  ],
+  COR: [
+    { label: 'xA/90', getValue: p => per90(p.expected_assists, p.minutes_played) ?? 0 },
+    { label: 'Key Passes/90', getValue: p => per90(p.key_passes, p.minutes_played) ?? 0 },
+    { label: 'Big Chances/90', getValue: p => per90(p.big_chances_created, p.minutes_played) ?? 0 },
+    { label: 'Final 3rd Passes/90', getValue: p => per90(p.accurate_final_third_passes, p.minutes_played) ?? 0 },
+    { label: 'Crosses/90', getValue: p => per90(p.accurate_crosses, p.minutes_played) ?? 0 },
+  ],
+  DIS: [
+    { label: 'Tackles/90', getValue: p => per90(p.tackles_won, p.minutes_played) ?? 0 },
+    { label: 'Interceptions/90', getValue: p => per90(p.interceptions, p.minutes_played) ?? 0 },
+    { label: 'Clearances/90', getValue: p => per90(p.clearances, p.minutes_played) ?? 0 },
+    { label: 'Ball Recovery/90', getValue: p => per90(p.ball_recovery, p.minutes_played) ?? 0 },
+    { label: 'Duels Won %', getValue: p => p.ground_duels_won_pct ?? 0 },
+  ],
+  PBC: [
+    { label: 'Dribbles/90', getValue: p => per90(p.successful_dribbles, p.minutes_played) ?? 0 },
+    { label: 'Final 3rd Passes/90', getValue: p => per90(p.accurate_final_third_passes, p.minutes_played) ?? 0 },
+    { label: 'Dribble Success %', getValue: p => p.successful_dribbles_pct ?? 0 },
+    { label: 'Long Balls/90', getValue: p => per90(p.accurate_long_balls, p.minutes_played) ?? 0 },
+    { label: 'Poss. Won/90', getValue: p => per90(p.ball_recovery, p.minutes_played) ?? 0 },
+  ],
+  OUR: [
+    { label: 'Schüsse/90', getValue: p => per90(p.total_shots, p.minutes_played) ?? 0 },
+    { label: 'Dribbles/90', getValue: p => per90(p.successful_dribbles, p.minutes_played) ?? 0 },
+    { label: 'Key Passes/90', getValue: p => per90(p.key_passes, p.minutes_played) ?? 0 },
+    { label: 'Big Chances/90', getValue: p => per90(p.big_chances_created, p.minutes_played) ?? 0 },
+    { label: 'xG/90', getValue: p => per90(p.expected_goals, p.minutes_played) ?? 0 },
+  ],
+}
+
+// Rose/Radar SVG Chart
+function RoseChart({ player, allPlayers, metric }: { player: PlayerStats; allPlayers: PlayerStats[]; metric: MetricKey }) {
+  const stats = METRIC_STATS[metric]
+  const n = stats.length
+  const cx = 120, cy = 120, r = 90
+
+  // Max values from all players for normalization
+  const maxVals = stats.map(s => Math.max(...allPlayers.map(p => s.getValue(p)), 0.001))
+  const playerVals = stats.map((s, i) => Math.min(s.getValue(player) / maxVals[i], 1))
+  const avgVals = stats.map((s, i) => {
+    const avg = allPlayers.reduce((sum, p) => sum + s.getValue(p), 0) / (allPlayers.length || 1)
+    return Math.min(avg / maxVals[i], 1)
+  })
+
+  const angleStep = (2 * Math.PI) / n
+  const startAngle = -Math.PI / 2
+
+  const toPoint = (val: number, idx: number) => {
+    const angle = startAngle + idx * angleStep
+    return {
+      x: cx + val * r * Math.cos(angle),
+      y: cy + val * r * Math.sin(angle),
+    }
+  }
+
+  const playerPath = playerVals.map((v, i) => toPoint(v, i))
+  const avgPath = avgVals.map((v, i) => toPoint(v, i))
+
+  const toSvgPath = (pts: { x: number; y: number }[]) =>
+    pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ') + ' Z'
+
+  // Grid rings
+  const rings = [0.25, 0.5, 0.75, 1.0]
+
+  return (
+    <svg width="240" height="240" style={{ overflow: 'visible' }}>
+      {/* Grid rings */}
+      {rings.map(ring => {
+        const pts = stats.map((_, i) => toPoint(ring, i))
+        return (
+          <polygon
+            key={ring}
+            points={pts.map(p => `${p.x},${p.y}`).join(' ')}
+            fill="none"
+            stroke="rgba(255,255,255,0.06)"
+            strokeWidth="1"
+          />
+        )
+      })}
+
+      {/* Axis lines */}
+      {stats.map((_, i) => {
+        const end = toPoint(1, i)
+        return (
+          <line
+            key={i}
+            x1={cx} y1={cy}
+            x2={end.x} y2={end.y}
+            stroke="rgba(255,255,255,0.08)"
+            strokeWidth="1"
+          />
+        )
+      })}
+
+      {/* Avg fill */}
+      <path
+        d={toSvgPath(avgPath)}
+        fill="rgba(255,255,255,0.05)"
+        stroke="rgba(255,255,255,0.2)"
+        strokeWidth="1"
+        strokeDasharray="3,3"
+      />
+
+      {/* Player fill */}
+      <path
+        d={toSvgPath(playerPath)}
+        fill="rgba(0,255,135,0.15)"
+        stroke="#00FF87"
+        strokeWidth="1.5"
+      />
+
+      {/* Player dots */}
+      {playerVals.map((v, i) => {
+        const pt = toPoint(v, i)
+        return <circle key={i} cx={pt.x} cy={pt.y} r="3" fill="#00FF87" />
+      })}
+
+      {/* Labels */}
+      {stats.map((s, i) => {
+        const angle = startAngle + i * angleStep
+        const labelR = r + 22
+        const lx = cx + labelR * Math.cos(angle)
+        const ly = cy + labelR * Math.sin(angle)
+        const val = stats[i].getValue(player)
+        return (
+          <g key={i}>
+            <text
+              x={lx} y={ly - 5}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fontSize="7.5"
+              fill="rgba(255,255,255,0.45)"
+              fontFamily="monospace"
+            >
+              {s.label}
+            </text>
+            <text
+              x={lx} y={ly + 7}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fontSize="8.5"
+              fontWeight="700"
+              fill="#00FF87"
+              fontFamily="monospace"
+            >
+              {val < 1 && val > 0 ? val.toFixed(2) : val.toFixed(1)}
+            </text>
+          </g>
+        )
+      })}
+    </svg>
+  )
+}
+
+// Player Modal
+function PlayerModal({
+  player, allPlayers, metric, onClose
+}: {
+  player: PlayerStats
+  allPlayers: PlayerStats[]
+  metric: MetricKey
+  onClose: () => void
+}) {
+  const metricInfo = METRICS.find(m => m.key === metric)!
+  const score = getScore(player, metric, allPlayers)
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  const POS_COLORS: Record<string, string> = { F: '#f87171', M: '#60a5fa', D: '#facc15', G: '#c084fc' }
+  const posColor = POS_COLORS[player.position] || '#fff'
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        background: 'rgba(0,0,0,0.75)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        backdropFilter: 'blur(4px)',
+        padding: '24px',
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: '#0a1929',
+          border: '1px solid rgba(0,255,135,0.25)',
+          borderRadius: '16px',
+          padding: '32px',
+          width: '100%',
+          maxWidth: '560px',
+          boxShadow: '0 24px 80px rgba(0,0,0,0.8), 0 0 40px rgba(0,255,135,0.05)',
+          position: 'relative',
+        }}
+      >
+        {/* Close */}
+        <button
+          onClick={onClose}
+          style={{
+            position: 'absolute', top: '16px', right: '16px',
+            background: 'rgba(255,255,255,0.05)', border: 'none',
+            color: 'rgba(255,255,255,0.4)', fontFamily: 'monospace',
+            fontSize: '1rem', cursor: 'pointer', borderRadius: '6px',
+            width: '32px', height: '32px', display: 'flex',
+            alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          ✕
+        </button>
+
+        {/* Player header */}
+        <div style={{ marginBottom: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '1.6rem', color: '#fff', letterSpacing: '0.02em' }}>
+              {player.name}
+            </h2>
+            <span style={{ fontFamily: 'monospace', fontSize: '0.7rem', fontWeight: 700, color: posColor, background: `${posColor}18`, padding: '2px 8px', borderRadius: '4px' }}>
+              {player.position}
+            </span>
+          </div>
+          <p style={{ fontFamily: 'monospace', fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)' }}>
+            {player.team} · {player.minutes_played?.toFixed(0)} min
+          </p>
+        </div>
+
+        {/* Active metric score */}
+        <div style={{
+          background: 'rgba(0,255,135,0.06)', border: '1px solid rgba(0,255,135,0.15)',
+          borderRadius: '10px', padding: '14px 20px', marginBottom: '28px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          <div>
+            <p style={{ fontFamily: 'monospace', fontSize: '0.65rem', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em', marginBottom: '2px' }}>
+              {metric} — {metricInfo.label}
+            </p>
+            <p style={{ fontFamily: 'monospace', fontSize: '0.68rem', color: 'rgba(255,255,255,0.45)' }}>
+              {metricInfo.nba}
+            </p>
+          </div>
+          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '2rem', color: '#00FF87' }}>
+            {metric === 'OUR' ? `${score.toFixed(1)}%` : score.toFixed(1)}
+          </span>
+        </div>
+
+        {/* Rose Chart */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+          <RoseChart player={player} allPlayers={allPlayers} metric={metric} />
+          <div style={{ display: 'flex', gap: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ width: '20px', height: '2px', background: '#00FF87', borderRadius: '1px' }} />
+              <span style={{ fontFamily: 'monospace', fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)' }}>Spieler</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ width: '20px', height: '2px', background: 'rgba(255,255,255,0.3)', borderRadius: '1px', borderTop: '1px dashed rgba(255,255,255,0.3)' }} />
+              <span style={{ fontFamily: 'monospace', fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)' }}>Liga-Ø</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const POS_COLORS: Record<string, string> = {
+  F: 'text-red-400 bg-red-400/10',
+  M: 'text-blue-400 bg-blue-400/10',
+  D: 'text-yellow-400 bg-yellow-400/10',
+  G: 'text-purple-400 bg-purple-400/10',
+}
+
+function MetricTooltip({ m, alignRight }: { m: typeof METRICS[0]; alignRight?: boolean }) {
   const style: React.CSSProperties = {
     position: 'absolute',
     top: '110%',
@@ -58,13 +349,6 @@ function getScore(p: PlayerStats, key: MetricKey, allPlayers: PlayerStats[]): nu
   }
 }
 
-const POS_COLORS: Record<string, string> = {
-  F: 'text-red-400 bg-red-400/10',
-  M: 'text-blue-400 bg-blue-400/10',
-  D: 'text-yellow-400 bg-yellow-400/10',
-  G: 'text-purple-400 bg-purple-400/10',
-}
-
 export default function TalentLensPlus() {
   const [players, setPlayers] = useState<PlayerStats[]>([])
   const [loading, setLoading] = useState(true)
@@ -73,6 +357,7 @@ export default function TalentLensPlus() {
   const [minMinutes, setMinMinutes] = useState(900)
   const [hoveredTab, setHoveredTab] = useState<MetricKey | null>(null)
   const [hoveredCol, setHoveredCol] = useState<MetricKey | null>(null)
+  const [selectedPlayer, setSelectedPlayer] = useState<PlayerStats | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -108,8 +393,16 @@ export default function TalentLensPlus() {
 
   return (
     <div className="min-h-screen bg-pitch-950 text-white p-6">
-      <div className="max-w-7xl mx-auto">
+      {selectedPlayer && (
+        <PlayerModal
+          player={selectedPlayer}
+          allPlayers={filtered}
+          metric={activeMetric}
+          onClose={() => setSelectedPlayer(null)}
+        />
+      )}
 
+      <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           <h1 className="font-display text-4xl font-black tracking-wider text-white mb-1">
             TALENTLENS<span className="text-accent-green">+</span>
@@ -208,6 +501,11 @@ export default function TalentLensPlus() {
           </div>
         </div>
 
+        {/* Hint */}
+        <p className="font-mono text-xs text-pitch-500 mb-4">
+          Spielernamen anklicken für detaillierte Statistiken
+        </p>
+
         {loading ? (
           <div className="text-center py-20 text-pitch-400 font-mono">Laden...</div>
         ) : (
@@ -231,9 +529,18 @@ export default function TalentLensPlus() {
                     </span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-display font-bold text-sm text-white truncate">
-                          {p.name}
-                        </span>
+                        <button
+                          onClick={() => setSelectedPlayer(p)}
+                          style={{
+                            background: 'none', border: 'none', padding: 0,
+                            cursor: 'pointer', textAlign: 'left',
+                          }}
+                        >
+                          <span className="font-display font-bold text-sm text-white truncate hover:text-accent-green transition-colors"
+                            style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '0.875rem', color: 'inherit' }}>
+                            {p.name}
+                          </span>
+                        </button>
                         <span className={`font-mono text-xs px-1.5 py-0.5 rounded ${POS_COLORS[p.position] || 'text-pitch-400'}`}>
                           {p.position}
                         </span>
@@ -292,7 +599,15 @@ export default function TalentLensPlus() {
                             <span className={`text-xs px-1 py-0.5 rounded ${POS_COLORS[p.position] || ''}`}>
                               {p.position}
                             </span>
-                            <span className="text-white font-bold truncate max-w-28">{p.name}</span>
+                            <button
+                              onClick={() => setSelectedPlayer(p)}
+                              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                            >
+                              <span className="text-white font-bold truncate max-w-28 hover:text-accent-green transition-colors"
+                                style={{ fontFamily: 'monospace', fontWeight: 700 }}>
+                                {p.name}
+                              </span>
+                            </button>
                           </div>
                         </td>
                         {METRICS.map(m => {
