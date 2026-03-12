@@ -487,6 +487,32 @@ function TalentLensPlusInner() {
               </a>
             </div>
           )}
+          {activeMetric === 'PBC' && (
+            <div className="mt-3 pt-3 border-t border-pitch-700">
+              <p className="font-mono text-xs text-pitch-400">
+                <span className="text-accent-green">Formel:</span>{' '}
+                (Erfolgreiche Dribbles /90 × 2) + (Final Third Passes /90) + (Long Balls /90 × 0.5) — normalisiert auf 0–100
+              </p>
+              <p className="font-mono text-xs text-pitch-500 mt-1">
+                Misst wie aktiv ein Spieler den Ball vorwärts trägt — durch Dribbling, Pässe ins letzte Drittel und lange Verlagerungen. Inspiriert von StatsBomb&apos;s Methodik: ein progressiver Carry bewegt den Ball mindestens 25% der verbleibenden Distanz zum Tor.
+              </p>
+              <a
+                href="https://www.hudl.com/blog/the-art-of-progression-an-analysis-of-passing-vs-ball-carrying"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '4px',
+                  fontFamily: 'var(--font-mono)', fontSize: '0.62rem',
+                  color: 'rgba(0,255,135,0.6)', marginTop: '8px',
+                  textDecoration: 'none', transition: 'color 0.15s',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.color = '#00FF87')}
+                onMouseLeave={e => (e.currentTarget.style.color = 'rgba(0,255,135,0.6)')}
+              >
+                ↗ Inspiriert von: &ldquo;The Art of Progression&rdquo; — Hudl Statsbomb
+              </a>
+            </div>
+          )}
         </div>
 
         {/* Filters */}
