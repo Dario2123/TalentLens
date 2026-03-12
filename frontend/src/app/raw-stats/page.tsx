@@ -203,14 +203,6 @@ function LoadingState() {
   )
 }
 
-function RawStatsInner() {
-  return (
-    <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}><div style={{ width: '32px', height: '32px', border: '2px solid rgba(0,255,135,0.2)', borderTopColor: '#00FF87', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} /><style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style></div>}>
-      <RawStatsInner />
-    </Suspense>
-  )
-}
-
 export default function RawStats() {
   return (
     <Suspense fallback={null}>
