@@ -250,7 +250,7 @@ function MoneyballInner() {
 
 export default function Moneyball() {
   return (
-    <Suspense fallback={}>
+    <Suspense fallback={null}>
       <MoneyballInner />
     </Suspense>
   )

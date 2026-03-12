@@ -668,7 +668,7 @@ function TalentLensPlusInner() {
 
 export default function TalentLensPlus() {
   return (
-    <Suspense fallback={}>
+    <Suspense fallback={null}>
       <TalentLensPlusInner />
     </Suspense>
   )

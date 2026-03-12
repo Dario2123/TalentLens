@@ -213,7 +213,7 @@ function RawStatsInner() {
 
 export default function RawStats() {
   return (
-    <Suspense fallback={}>
+    <Suspense fallback={null}>
       <RawStatsInner />
     </Suspense>
   )
