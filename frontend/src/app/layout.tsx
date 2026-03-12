@@ -108,7 +108,7 @@ function Nav() {
           TALENT<span style={{ color: 'rgba(255,255,255,0.9)' }}>LENS</span>
         </span>
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'rgba(255,255,255,0.55)', marginLeft: '8px', letterSpacing: '0.1em', fontWeight: 600 }}>
-          BUNDESLIGA 25/26
+          {currentLeague.toUpperCase()} 25/26
         </span>
       </Link>
 
