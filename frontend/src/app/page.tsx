@@ -1,13 +1,18 @@
 'use client'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 
-export default function Home() {
+function HomeInner() {
+  const searchParams = useSearchParams()
+  const currentLeague = searchParams.get('league') || 'Bundesliga'
+
   return (
     <div style={{ paddingTop: '60px' }}>
       {/* Hero */}
       <div style={{ marginBottom: '64px', textAlign: 'center' }}>
         <p className="section-label" style={{ marginBottom: '16px' }}>
-          Bundesliga Scouting Platform
+          Multi-League Football Scouting Platform
         </p>
         <h1 style={{
           fontFamily: 'var(--font-display)',
@@ -31,9 +36,25 @@ export default function Home() {
           margin: '0 auto',
           lineHeight: 1.7,
         }}>
-          Datengetriebenes Scouting für die Bundesliga. 430 Spieler,
+          Datengetriebenes Scouting über 10 Ligen. 4.705 Spieler,
           50+ Metriken, eigene Composite-Scores.
         </p>
+
+        {/* League pills */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center', marginTop: '24px' }}>
+          {['Bundesliga', '2. Bundesliga', 'Premier League', 'Championship', 'La Liga', 'Serie A', 'Ligue 1', 'Eredivisie', 'Primeira Liga', 'Super Lig'].map(l => (
+            <span key={l} style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: '0.6rem',
+              color: l === currentLeague ? '#00FF87' : 'rgba(255,255,255,0.25)',
+              background: l === currentLeague ? 'rgba(0,255,135,0.08)' : 'rgba(255,255,255,0.03)',
+              border: `1px solid ${l === currentLeague ? 'rgba(0,255,135,0.3)' : 'rgba(255,255,255,0.06)'}`,
+              borderRadius: '4px',
+              padding: '3px 10px',
+              letterSpacing: '0.05em',
+            }}>{l}</span>
+          ))}
+        </div>
       </div>
 
       {/* Module cards */}
@@ -45,29 +66,37 @@ export default function Home() {
         margin: '0 auto',
       }}>
         <ModuleCard
-          href="/raw-stats"
+          href={`/raw-stats?league=${currentLeague}`}
           tag="01"
           title="RAW STATS"
-          desc="Rohdaten explorer. Sortiere nach xG, xA, Tackles, Pässen — mit automatischer Per-90-Normalisierung."
-          metric="430 Spieler · 50+ Felder"
+          desc="Rohdaten Explorer. Sortiere nach xG, xA, Tackles, Pässen — mit automatischer Per-90-Normalisierung. Für alle 10 Ligen."
+          metric="4.705 Spieler · 50+ Felder"
         />
         <ModuleCard
-          href="/moneyball"
+          href={`/moneyball?league=${currentLeague}`}
           tag="02"
           title="MONEYBALL"
-          desc="Definiere dein Spielerprofil. Filtere nach Alter, Marktwert, Körpergröße und Performance-Metriken."
+          desc="Definiere dein Spielerprofil. Filtere nach Alter, Marktwert, Körpergröße und Performance-Metriken — ligaübergreifend."
           metric="Multi-Filter Scouting"
         />
         <ModuleCard
-          href="/talentlens-plus"
+          href={`/talentlens-plus?league=${currentLeague}`}
           tag="03"
           title="TALENTLENS+"
-          desc="Proprietary composite metrics. Goal Threat Score, Creative Output Rating, Defensive Impact — inspiriert von NBA Advanced Stats."
-          metric="4 Composite Scores"
+          desc="Proprietäre Composite Metrics. Goal Threat Score, Creative Output Rating, Defensive Impact, Offensive Usage Rate — inspiriert von NBA Advanced Stats."
+          metric="6 Composite Scores"
           highlight
         />
       </div>
     </div>
+  )
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={null}>
+      <HomeInner />
+    </Suspense>
   )
 }
 
@@ -102,35 +131,11 @@ function ModuleCard({ href, tag, title, desc, metric, highlight }: {
           }} />
         )}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-          <span style={{
-            fontFamily: 'var(--font-display)',
-            fontWeight: 800,
-            fontSize: '2rem',
-            color: 'rgba(255,255,255,0.08)',
-            lineHeight: 1,
-          }}>{tag}</span>
-          <span style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: '0.6rem',
-            color: 'var(--accent-green)',
-            opacity: 0.7,
-            letterSpacing: '0.1em',
-          }}>{metric}</span>
+          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '2rem', color: 'rgba(255,255,255,0.08)', lineHeight: 1 }}>{tag}</span>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'var(--accent-green)', opacity: 0.7, letterSpacing: '0.1em' }}>{metric}</span>
         </div>
-        <h2 style={{
-          fontFamily: 'var(--font-display)',
-          fontWeight: 800,
-          fontSize: '1.4rem',
-          letterSpacing: '0.05em',
-          color: '#fff',
-          marginBottom: '12px',
-        }}>{title}</h2>
-        <p style={{
-          fontFamily: 'var(--font-mono)',
-          fontSize: '0.72rem',
-          color: 'rgba(255,255,255,0.4)',
-          lineHeight: 1.7,
-        }}>{desc}</p>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.4rem', letterSpacing: '0.05em', color: '#fff', marginBottom: '12px' }}>{title}</h2>
+        <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', lineHeight: 1.7 }}>{desc}</p>
       </div>
     </Link>
   )
