@@ -1,9 +1,6 @@
-import { createClient } from '@supabase/supabase-js'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-export const supabase = createClient(supabaseUrl, supabaseKey)
+// Type definitions for database entities.
+// All data fetching is handled server-side via /api/players and /api/last-updated,
+// so no client-side Supabase instance is needed here.
 
 export type Player = {
   sofascore_id: number

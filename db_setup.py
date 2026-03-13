@@ -223,7 +223,9 @@ def import_data(csv_path: str = "scraper/players_stats.csv"):
     print(f"\nImport abgeschlossen!")
     print(f"  players:      {len(players_records)} Eintraege")
     print(f"  player_stats: {len(stats_records)} Eintraege")
-    print(f"Dashboard: https://supabase.com/dashboard/project/oiykbthdgiwnaucypvqc/editor")
+    # Derive project ref from SUPABASE_URL (e.g. https://<ref>.supabase.co)
+    project_ref = SUPABASE_URL.split("//")[-1].split(".")[0] if SUPABASE_URL else "<project>"
+    print(f"Dashboard: https://supabase.com/dashboard/project/{project_ref}/editor")
 
 
 if __name__ == "__main__":

@@ -3,7 +3,6 @@ import './globals.css'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState, Suspense } from 'react'
-import { supabase } from '@/lib/supabase'
 
 const LEAGUES = [
   'Bundesliga',
@@ -46,15 +45,13 @@ function Nav() {
 
   useEffect(() => {
     async function fetchLastUpdated() {
-      const { data } = await supabase
-        .from('player_stats')
-        .select('updated_at')
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .single()
-      if (data?.updated_at) {
-        const date = new Date(data.updated_at)
-        setLastUpdated(date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' }))
+      const res = await fetch('/api/last-updated')
+      if (res.ok) {
+        const { updatedAt } = await res.json()
+        if (updatedAt) {
+          const date = new Date(updatedAt)
+          setLastUpdated(date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' }))
+        }
       }
     }
     fetchLastUpdated()
