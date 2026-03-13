@@ -23,11 +23,11 @@ function maybeCleanup() {
   if (now - lastCleanup < 5 * 60_000) return // clean every 5 minutes
   lastCleanup = now
   const cutoff = now - WINDOW_MS
-  for (const [ip, timestamps] of rateLimitMap) {
+  Array.from(rateLimitMap.entries()).forEach(([ip, timestamps]) => {
     const recent = timestamps.filter(t => t > cutoff)
     if (recent.length === 0) rateLimitMap.delete(ip)
     else rateLimitMap.set(ip, recent)
-  }
+  })
 }
 
 export function middleware(req: NextRequest) {
