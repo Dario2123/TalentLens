@@ -41,11 +41,12 @@ function KickbaseScoutInner() {
     setPlayers([])
     setLoading(true)
     async function load() {
-      const params = new URLSearchParams({ league: currentLeague, limit: '2000' })
+      const params = new URLSearchParams({ league: currentLeague })
       const res = await fetch(`/api/players?${params}`)
       if (res.ok) {
-        const data = await res.json()
-        setPlayers(data)
+        const json = await res.json()
+        const flat = (json.data ?? []).map((p: any) => ({ ...p, ...(p.player_stats?.[0] ?? {}) }))
+        setPlayers(flat)
       }
       setLoading(false)
     }
