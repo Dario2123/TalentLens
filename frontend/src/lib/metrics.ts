@@ -135,30 +135,83 @@ export function calcOffensiveUsageRate(player: PlayerStats, allTeamPlayers: Play
   return Math.min(100, (playerOffPEA / teamOffPEA) * 100)
 }
 
-// Kickbase scoring weights by position
-const KB_GOAL_PTS: Record<string, number> = { F: 80, M: 70, D: 60, G: 50 }
-const KB_ASSIST_PTS = 30
-const KB_YELLOW_PTS = -20
-const KB_RED_PTS = -50
+// Kickbase scoring weights by position (from kickbase.com/de/points-table)
+// Goals: GK +120, DEF +100, MF +90, ST +80
+const KB_GOAL_PTS: Record<string, number> = { F: 80, M: 90, D: 100, G: 120 }
+// Assists: GK +55, DEF +45, MF +35, ST +35
+const KB_ASSIST_PTS: Record<string, number> = { F: 35, M: 35, D: 45, G: 55 }
 
 // Estimated Kickbase points from actual season stats
+// Uses all available stats: goals, assists, shots, big chances, dribbles, crosses, recoveries, tackles, cards
 export function calcKickbasePoints(p: PlayerStats): number {
-  const goalPts = KB_GOAL_PTS[p.position || 'M'] ?? 70
+  const pos = p.position || 'M'
+  const goalPts = KB_GOAL_PTS[pos] ?? 90
+  const assistPts = KB_ASSIST_PTS[pos] ?? 35
+
   const goals = p.goals || 0
   const assists = p.assists || 0
+  // shots_on_target is a count; off-target = remainder
+  const shotsOnTarget = p.shots_on_target || 0
+  const shotsOffTarget = Math.max(0, (p.total_shots || 0) - shotsOnTarget)
+  const bigChancesCreated = p.big_chances_created || 0
+  const bigChancesMissed = p.big_chances_missed || 0
+  const crosses = p.accurate_crosses || 0
+  const dribbles = p.successful_dribbles || 0
+  const recovery = p.ball_recovery || 0
+  const tacklesWon = p.tackles_won || 0
   const yellows = p.yellow_cards || 0
   const reds = p.red_cards || 0
-  return goals * goalPts + assists * KB_ASSIST_PTS + yellows * KB_YELLOW_PTS + reds * KB_RED_PTS
+
+  return (
+    goals * goalPts +
+    assists * assistPts +
+    shotsOnTarget * 12 +       // Torschuss aufs Tor
+    shotsOffTarget * 5 +       // Torschuss (vorbei/geblockt avg)
+    bigChancesCreated * 15 +   // Großchance kreiert
+    bigChancesMissed * (-15) + // Großchance vergeben
+    crosses * 3 +              // Erfolgreiche Flanke
+    dribbles * 5 +             // Gegner ausgedribbelt
+    recovery * 5 +             // Ballgewinn
+    tacklesWon * 5 +           // Gewonnener Zweikampf
+    yellows * (-10) +          // Gelbe Karte
+    reds * (-50)               // Gelb-Rot / Rote Karte
+  )
 }
 
 // Expected Kickbase points based on xG/xA (what player "should have" earned)
+// Replaces goals→xG and assists→xA; rest stays same (shots, dribbles, etc. don't change)
 export function calcExpectedKickbasePoints(p: PlayerStats): number {
-  const goalPts = KB_GOAL_PTS[p.position || 'M'] ?? 70
+  const pos = p.position || 'M'
+  const goalPts = KB_GOAL_PTS[pos] ?? 90
+  const assistPts = KB_ASSIST_PTS[pos] ?? 35
+
   const xg = p.expected_goals || 0
   const xa = p.expected_assists || 0
+  const shotsOnTarget = p.shots_on_target || 0
+  const shotsOffTarget = Math.max(0, (p.total_shots || 0) - shotsOnTarget)
+  const bigChancesCreated = p.big_chances_created || 0
+  const bigChancesMissed = p.big_chances_missed || 0
+  const crosses = p.accurate_crosses || 0
+  const dribbles = p.successful_dribbles || 0
+  const recovery = p.ball_recovery || 0
+  const tacklesWon = p.tackles_won || 0
   const yellows = p.yellow_cards || 0
   const reds = p.red_cards || 0
-  return xg * goalPts + xa * KB_ASSIST_PTS + yellows * KB_YELLOW_PTS + reds * KB_RED_PTS
+
+  return (
+    xg * goalPts +
+    xa * assistPts +
+    shotsOnTarget * 12 +
+    shotsOffTarget * 5 +
+    bigChancesCreated * 15 +
+    bigChancesMissed * (-15) +
+    crosses * 3 +
+    dribbles * 5 +
+    recovery * 5 +
+    tacklesWon * 5 +
+    yellows * (-10) +
+    reds * (-50)
+  )
 }
 
 // KB Points per 90 min
