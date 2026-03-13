@@ -178,6 +178,7 @@ function Nav() {
       <NavLink href={`/raw-stats?league=${currentLeague}`} active={path === '/raw-stats'} label="Raw Stats" />
       <NavLink href={`/moneyball?league=${currentLeague}`} active={path === '/moneyball'} label="Moneyball" />
       <NavLink href={`/talentlens-plus?league=${currentLeague}`} active={path === '/talentlens-plus'} label="TalentLens+" badge />
+      <NavLink href={`/kickbase?league=${currentLeague}`} active={path === '/kickbase'} label="Kickbase" />
       <NavLink href={`/about?league=${currentLeague}`} active={path === '/about'} label="About" />
 
       {/* Right side */}

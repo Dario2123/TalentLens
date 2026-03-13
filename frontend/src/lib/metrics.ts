@@ -134,3 +134,48 @@ export function calcOffensiveUsageRate(player: PlayerStats, allTeamPlayers: Play
   if (teamOffPEA === 0) return 0
   return Math.min(100, (playerOffPEA / teamOffPEA) * 100)
 }
+
+// Kickbase scoring weights by position
+const KB_GOAL_PTS: Record<string, number> = { F: 80, M: 70, D: 60, G: 50 }
+const KB_ASSIST_PTS = 30
+const KB_YELLOW_PTS = -20
+const KB_RED_PTS = -50
+
+// Estimated Kickbase points from actual season stats
+export function calcKickbasePoints(p: PlayerStats): number {
+  const goalPts = KB_GOAL_PTS[p.position || 'M'] ?? 70
+  const goals = p.goals || 0
+  const assists = p.assists || 0
+  const yellows = p.yellow_cards || 0
+  const reds = p.red_cards || 0
+  return goals * goalPts + assists * KB_ASSIST_PTS + yellows * KB_YELLOW_PTS + reds * KB_RED_PTS
+}
+
+// Expected Kickbase points based on xG/xA (what player "should have" earned)
+export function calcExpectedKickbasePoints(p: PlayerStats): number {
+  const goalPts = KB_GOAL_PTS[p.position || 'M'] ?? 70
+  const xg = p.expected_goals || 0
+  const xa = p.expected_assists || 0
+  const yellows = p.yellow_cards || 0
+  const reds = p.red_cards || 0
+  return xg * goalPts + xa * KB_ASSIST_PTS + yellows * KB_YELLOW_PTS + reds * KB_RED_PTS
+}
+
+// KB Points per 90 min
+export function calcKickbaseP90(p: PlayerStats): number {
+  const min = p.minutes_played || 0
+  if (min < 90) return 0
+  return (calcKickbasePoints(p) / min) * 90
+}
+
+// Expected KB Points per 90 min
+export function calcExpectedKickbaseP90(p: PlayerStats): number {
+  const min = p.minutes_played || 0
+  if (min < 90) return 0
+  return (calcExpectedKickbasePoints(p) / min) * 90
+}
+
+// Underperformance score: positive = underperformed xG/xA (bounce-back candidate)
+export function calcKickbaseUnderperformance(p: PlayerStats): number {
+  return calcExpectedKickbasePoints(p) - calcKickbasePoints(p)
+}
