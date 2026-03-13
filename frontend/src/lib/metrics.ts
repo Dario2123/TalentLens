@@ -141,77 +141,64 @@ const KB_GOAL_PTS: Record<string, number> = { F: 80, M: 90, D: 100, G: 120 }
 // Assists: GK +55, DEF +45, MF +35, ST +35
 const KB_ASSIST_PTS: Record<string, number> = { F: 35, M: 35, D: 45, G: 55 }
 
-// Estimated Kickbase points from actual season stats
-// Uses all available stats: goals, assists, shots, big chances, dribbles, crosses, recoveries, tackles, cards
-export function calcKickbasePoints(p: PlayerStats): number {
+// Shared stat extraction for KB calculations
+function kbStats(p: PlayerStats) {
   const pos = p.position || 'M'
-  const goalPts = KB_GOAL_PTS[pos] ?? 90
-  const assistPts = KB_ASSIST_PTS[pos] ?? 35
+  return {
+    goalPts: KB_GOAL_PTS[pos] ?? 90,
+    assistPts: KB_ASSIST_PTS[pos] ?? 35,
+    shotsOnTarget: p.shots_on_target || 0,                              // +12 Torschuss aufs Tor
+    shotsOffTarget: Math.max(0, (p.total_shots || 0) - (p.shots_on_target || 0)), // +5 Torschuss vorbei/geblockt avg
+    bigChancesCreated: p.big_chances_created || 0,                      // +15 Großchance kreiert
+    bigChancesMissed: p.big_chances_missed || 0,                        // -15 Großchance vergeben
+    keyPasses: p.key_passes || 0,                                       // +5  Torschussvorlage
+    crosses: p.accurate_crosses || 0,                                   // +3  Erfolgreiche Flanke
+    dribbles: p.successful_dribbles || 0,                               // +5  Gegner ausgedribbelt
+    recovery: p.ball_recovery || 0,                                     // +5  Ballgewinn
+    tacklesWon: p.tackles_won || 0,                                     // +5  Gewonnener Zweikampf
+    interceptions: p.interceptions || 0,                                // +2  Pass abgefangen (in/außer 16er avg)
+    clearances: p.clearances || 0,                                      // +4  Geklärt (in/außer 16er avg)
+    longBalls: p.accurate_long_balls || 0,                              // +1  Präziser langer Pass
+    finalThirdPasses: p.accurate_final_third_passes || 0,               // +1  Pass vorderes Drittel
+    fouls: p.fouls || 0,                                                // -2  Foul
+    yellows: p.yellow_cards || 0,                                       // -10 Gelbe Karte
+    reds: p.red_cards || 0,                                             // -50 Gelb-Rot / Rote Karte
+  }
+}
 
-  const goals = p.goals || 0
-  const assists = p.assists || 0
-  // shots_on_target is a count; off-target = remainder
-  const shotsOnTarget = p.shots_on_target || 0
-  const shotsOffTarget = Math.max(0, (p.total_shots || 0) - shotsOnTarget)
-  const bigChancesCreated = p.big_chances_created || 0
-  const bigChancesMissed = p.big_chances_missed || 0
-  const crosses = p.accurate_crosses || 0
-  const dribbles = p.successful_dribbles || 0
-  const recovery = p.ball_recovery || 0
-  const tacklesWon = p.tackles_won || 0
-  const yellows = p.yellow_cards || 0
-  const reds = p.red_cards || 0
-
+function kbCalc(s: ReturnType<typeof kbStats>, goals: number, assists: number): number {
   return (
-    goals * goalPts +
-    assists * assistPts +
-    shotsOnTarget * 12 +       // Torschuss aufs Tor
-    shotsOffTarget * 5 +       // Torschuss (vorbei/geblockt avg)
-    bigChancesCreated * 15 +   // Großchance kreiert
-    bigChancesMissed * (-15) + // Großchance vergeben
-    crosses * 3 +              // Erfolgreiche Flanke
-    dribbles * 5 +             // Gegner ausgedribbelt
-    recovery * 5 +             // Ballgewinn
-    tacklesWon * 5 +           // Gewonnener Zweikampf
-    yellows * (-10) +          // Gelbe Karte
-    reds * (-50)               // Gelb-Rot / Rote Karte
+    goals * s.goalPts +
+    assists * s.assistPts +
+    s.shotsOnTarget * 12 +
+    s.shotsOffTarget * 5 +
+    s.bigChancesCreated * 15 +
+    s.bigChancesMissed * (-15) +
+    s.keyPasses * 5 +
+    s.crosses * 3 +
+    s.dribbles * 5 +
+    s.recovery * 5 +
+    s.tacklesWon * 5 +
+    s.interceptions * 2 +
+    s.clearances * 4 +
+    s.longBalls * 1 +
+    s.finalThirdPasses * 1 +
+    s.fouls * (-2) +
+    s.yellows * (-10) +
+    s.reds * (-50)
   )
 }
 
+// Estimated Kickbase points from actual season stats
+export function calcKickbasePoints(p: PlayerStats): number {
+  const s = kbStats(p)
+  return kbCalc(s, p.goals || 0, p.assists || 0)
+}
+
 // Expected Kickbase points based on xG/xA (what player "should have" earned)
-// Replaces goals→xG and assists→xA; rest stays same (shots, dribbles, etc. don't change)
 export function calcExpectedKickbasePoints(p: PlayerStats): number {
-  const pos = p.position || 'M'
-  const goalPts = KB_GOAL_PTS[pos] ?? 90
-  const assistPts = KB_ASSIST_PTS[pos] ?? 35
-
-  const xg = p.expected_goals || 0
-  const xa = p.expected_assists || 0
-  const shotsOnTarget = p.shots_on_target || 0
-  const shotsOffTarget = Math.max(0, (p.total_shots || 0) - shotsOnTarget)
-  const bigChancesCreated = p.big_chances_created || 0
-  const bigChancesMissed = p.big_chances_missed || 0
-  const crosses = p.accurate_crosses || 0
-  const dribbles = p.successful_dribbles || 0
-  const recovery = p.ball_recovery || 0
-  const tacklesWon = p.tackles_won || 0
-  const yellows = p.yellow_cards || 0
-  const reds = p.red_cards || 0
-
-  return (
-    xg * goalPts +
-    xa * assistPts +
-    shotsOnTarget * 12 +
-    shotsOffTarget * 5 +
-    bigChancesCreated * 15 +
-    bigChancesMissed * (-15) +
-    crosses * 3 +
-    dribbles * 5 +
-    recovery * 5 +
-    tacklesWon * 5 +
-    yellows * (-10) +
-    reds * (-50)
-  )
+  const s = kbStats(p)
+  return kbCalc(s, p.expected_goals || 0, p.expected_assists || 0)
 }
 
 // KB Points per 90 min

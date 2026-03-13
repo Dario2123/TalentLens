@@ -130,12 +130,18 @@ function KickbaseScoutInner() {
         <ScoringLegend label="Vorlage AV" pts={45} color="#facc15" />
         <ScoringLegend label="Vorlage MF/ST" pts={35} color="#60a5fa" />
         <ScoringLegend label="Schuss (Tor)" pts={12} color="rgba(255,255,255,0.5)" />
+        <ScoringLegend label="Schuss (daneben)" pts={5} color="rgba(255,255,255,0.4)" />
         <ScoringLegend label="Großchance+" pts={15} color="#00FF87" />
         <ScoringLegend label="Großchance−" pts={-15} color="#f87171" />
+        <ScoringLegend label="Torschussvorlage" pts={5} color="#00FF87" />
         <ScoringLegend label="Dribble" pts={5} color="#00FF87" />
         <ScoringLegend label="Flanke" pts={3} color="#00FF87" />
         <ScoringLegend label="Ballgewinn" pts={5} color="#00FF87" />
         <ScoringLegend label="Tackle" pts={5} color="#00FF87" />
+        <ScoringLegend label="Interception" pts={2} color="#00FF87" />
+        <ScoringLegend label="Klärung" pts={4} color="#00FF87" />
+        <ScoringLegend label="Langer Pass" pts={1} color="rgba(255,255,255,0.4)" />
+        <ScoringLegend label="Foul" pts={-2} color="#f87171" />
         <ScoringLegend label="Gelb" pts={-10} color="#fbbf24" />
         <ScoringLegend label="Rot" pts={-50} color="#ef4444" />
         <div style={{ marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: '0.62rem', color: 'rgba(255,255,255,0.25)', alignSelf: 'center', lineHeight: 1.6 }}>
