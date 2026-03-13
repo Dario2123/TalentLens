@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseServer } from '@/lib/supabase-server'
+import { getSupabaseServer } from '@/lib/supabase-server'
 import { validateLeague, findUnexpectedParams } from '@/lib/validation'
 
 // GET /api/players?league=<ValidLeague>
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     )
   }
 
-  const { data, error } = await supabaseServer
+  const { data, error } = await getSupabaseServer()
     .from('players')
     .select('*, player_stats(*)')
     .eq('league', league)

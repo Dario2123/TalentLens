@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
-import { supabaseServer } from '@/lib/supabase-server'
+import { getSupabaseServer } from '@/lib/supabase-server'
 
 // GET /api/last-updated
 // Returns the most recent updated_at timestamp from player_stats.
 export async function GET() {
-  const { data, error } = await supabaseServer
+  const { data, error } = await getSupabaseServer()
     .from('player_stats')
     .select('updated_at')
     .order('updated_at', { ascending: false })
