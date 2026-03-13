@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { supabase, PlayerWithStats } from '../../lib/supabase'
+import { PlayerWithStats } from '../../lib/supabase'
 import { per90, formatValue, formatMillions } from '../../lib/metrics'
 
 type FilterConfig = {
@@ -46,12 +46,12 @@ function MoneyballInner() {
     setPlayers([])
     setLoading(true)
     async function load() {
-      const { data } = await supabase
-        .from('players')
-        .select('*, player_stats(*)')
-        .eq('league', currentLeague)
-      if (data) {
-        setPlayers(data.map((p: any) => ({ ...p, ...(p.player_stats?.[0] ?? {}) })))
+      const res = await fetch(`/api/players?league=${encodeURIComponent(currentLeague)}`)
+      if (res.ok) {
+        const { data } = await res.json()
+        if (data) {
+          setPlayers(data.map((p: any) => ({ ...p, ...(p.player_stats?.[0] ?? {}) })))
+        }
       }
       setLoading(false)
     }
