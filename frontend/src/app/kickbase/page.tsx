@@ -7,6 +7,7 @@ import {
   PlayerStats,
   calcKickbasePoints, calcExpectedKickbasePoints,
   calcKickbaseP90, calcExpectedKickbaseP90, calcKickbaseUnderperformance,
+  KB_ENTRIES, KB_COVERAGE,
 } from '@/lib/metrics'
 
 type ViewMode = 'ranking' | 'valuepicks'
@@ -112,42 +113,8 @@ function KickbaseScoutInner() {
         </p>
       </div>
 
-      {/* Info Banner */}
-      <div style={{
-        background: 'rgba(0,255,135,0.04)',
-        border: '1px solid rgba(0,255,135,0.12)',
-        borderRadius: '10px',
-        padding: '14px 18px',
-        marginBottom: '24px',
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: '24px',
-      }}>
-        <ScoringLegend label="Tor TW" pts={120} color="#c084fc" />
-        <ScoringLegend label="Tor AV" pts={100} color="#facc15" />
-        <ScoringLegend label="Tor MF" pts={90} color="#60a5fa" />
-        <ScoringLegend label="Tor ST" pts={80} color="#f87171" />
-        <ScoringLegend label="Vorlage AV" pts={45} color="#facc15" />
-        <ScoringLegend label="Vorlage MF/ST" pts={35} color="#60a5fa" />
-        <ScoringLegend label="Schuss (Tor)" pts={12} color="rgba(255,255,255,0.5)" />
-        <ScoringLegend label="Schuss (daneben)" pts={5} color="rgba(255,255,255,0.4)" />
-        <ScoringLegend label="Großchance+" pts={15} color="#00FF87" />
-        <ScoringLegend label="Großchance−" pts={-15} color="#f87171" />
-        <ScoringLegend label="Torschussvorlage" pts={5} color="#00FF87" />
-        <ScoringLegend label="Dribble" pts={5} color="#00FF87" />
-        <ScoringLegend label="Flanke" pts={3} color="#00FF87" />
-        <ScoringLegend label="Ballgewinn" pts={5} color="#00FF87" />
-        <ScoringLegend label="Tackle" pts={5} color="#00FF87" />
-        <ScoringLegend label="Interception" pts={2} color="#00FF87" />
-        <ScoringLegend label="Klärung" pts={4} color="#00FF87" />
-        <ScoringLegend label="Langer Pass" pts={1} color="rgba(255,255,255,0.4)" />
-        <ScoringLegend label="Foul" pts={-2} color="#f87171" />
-        <ScoringLegend label="Gelb" pts={-10} color="#fbbf24" />
-        <ScoringLegend label="Rot" pts={-50} color="#ef4444" />
-        <div style={{ marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: '0.62rem', color: 'rgba(255,255,255,0.25)', alignSelf: 'center', lineHeight: 1.6 }}>
-          KB Marktwert — <span style={{ color: 'rgba(255,255,255,0.15)' }}>kommt bald</span>
-        </div>
-      </div>
+      {/* Scoring Coverage Banner */}
+      <ScoringCoverageBanner />
 
       {/* View Tabs */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
@@ -230,14 +197,121 @@ function KickbaseScoutInner() {
   )
 }
 
+function ScoringCoverageBanner() {
+  const [showMissing, setShowMissing] = useState(false)
+  const mappedEntries = KB_ENTRIES.filter(e => e.getValue !== null)
+  const missingEntries = KB_ENTRIES.filter(e => e.getValue === null)
+  const coveragePct = Math.round((KB_COVERAGE.mapped / KB_COVERAGE.total) * 100)
+
+  // Position-dependent entries shown separately
+  const POS_ENTRIES = [
+    { label: 'Tor TW', pts: 120, color: '#c084fc' },
+    { label: 'Tor AV', pts: 100, color: '#facc15' },
+    { label: 'Tor MF', pts: 90, color: '#60a5fa' },
+    { label: 'Tor ST', pts: 80, color: '#f87171' },
+    { label: 'Vorlage TW', pts: 55, color: '#c084fc' },
+    { label: 'Vorlage AV', pts: 45, color: '#facc15' },
+    { label: 'Vorlage MF/ST', pts: 35, color: '#60a5fa' },
+  ]
+
+  return (
+    <div style={{ marginBottom: '24px' }}>
+      {/* Mapped entries pill strip */}
+      <div style={{
+        background: 'rgba(0,255,135,0.04)',
+        border: '1px solid rgba(0,255,135,0.12)',
+        borderRadius: '10px 10px 0 0',
+        padding: '12px 16px',
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '18px',
+        alignItems: 'center',
+      }}>
+        {POS_ENTRIES.map(e => (
+          <ScoringLegend key={e.label} label={e.label} pts={e.pts} color={e.color} />
+        ))}
+        <div style={{ width: '1px', height: '16px', background: 'rgba(255,255,255,0.08)' }} />
+        {mappedEntries.map(e => (
+          <ScoringLegend key={e.short_name} label={e.name} pts={e.pts} color={e.pts > 0 ? '#00FF87' : '#f87171'} />
+        ))}
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'rgba(255,255,255,0.25)' }}>
+            KB Wert — <span style={{ color: 'rgba(255,255,255,0.12)' }}>kommt bald</span>
+          </span>
+        </div>
+      </div>
+
+      {/* Coverage bar + missing toggle */}
+      <div style={{
+        background: 'rgba(0,0,0,0.3)',
+        border: '1px solid rgba(0,255,135,0.08)',
+        borderTop: 'none',
+        borderRadius: '0 0 10px 10px',
+        padding: '8px 16px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', whiteSpace: 'nowrap' }}>
+            FORMEL-COVERAGE
+          </span>
+          <div style={{ flex: 1, height: '3px', background: 'rgba(255,255,255,0.06)', borderRadius: '2px', overflow: 'hidden', maxWidth: '200px' }}>
+            <div style={{ height: '100%', width: `${coveragePct}%`, background: coveragePct > 60 ? '#00FF87' : '#fbbf24', borderRadius: '2px', transition: 'width 0.3s' }} />
+          </div>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', fontWeight: 700, color: coveragePct > 60 ? '#00FF87' : '#fbbf24' }}>
+            {KB_COVERAGE.mapped}/{KB_COVERAGE.total} ({coveragePct}%)
+          </span>
+        </div>
+        <button
+          onClick={() => setShowMissing(v => !v)}
+          style={{
+            fontFamily: 'var(--font-mono)', fontSize: '0.58rem', fontWeight: 700,
+            color: 'rgba(255,255,255,0.3)', background: 'transparent', border: 'none',
+            cursor: 'pointer', letterSpacing: '0.06em', whiteSpace: 'nowrap',
+          }}
+        >
+          {showMissing ? '▲ VERSTECKEN' : '▼ FEHLENDE DATEN'}
+        </button>
+      </div>
+
+      {/* Missing entries expandable */}
+      {showMissing && (
+        <div style={{
+          background: '#060f1a',
+          border: '1px solid rgba(255,255,255,0.06)',
+          borderTop: 'none',
+          borderRadius: '0 0 10px 10px',
+          padding: '12px 16px',
+        }}>
+          <p style={{ fontFamily: 'var(--font-mono)', fontSize: '0.6rem', color: 'rgba(255,255,255,0.2)', marginBottom: '10px', letterSpacing: '0.08em' }}>
+            NICHT GEMAPPT — DATEN FEHLEN NOCH
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '4px' }}>
+            {missingEntries.map(e => (
+              <div key={e.short_name} style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', fontWeight: 700,
+                  color: e.pts > 0 ? 'rgba(0,255,135,0.4)' : 'rgba(248,113,113,0.4)', minWidth: '32px', textAlign: 'right' }}>
+                  {e.pts > 0 ? '+' : ''}{e.pts}
+                </span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', color: 'rgba(255,255,255,0.35)' }}>{e.name}</span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.55rem', color: 'rgba(255,255,255,0.15)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  → {e.dataNeeded}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function ScoringLegend({ label, pts, color }: { label: string; pts: number; color: string }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)' }}>{label}</span>
-      <span style={{
-        fontFamily: 'var(--font-mono)', fontSize: '0.65rem', fontWeight: 700,
-        color: pts > 0 ? color : '#ef4444',
-      }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', color: 'rgba(255,255,255,0.35)' }}>{label}</span>
+      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.62rem', fontWeight: 700, color }}>
         {pts > 0 ? '+' : ''}{pts}
       </span>
     </div>

@@ -135,70 +135,137 @@ export function calcOffensiveUsageRate(player: PlayerStats, allTeamPlayers: Play
   return Math.min(100, (playerOffPEA / teamOffPEA) * 100)
 }
 
-// Kickbase scoring weights by position (from kickbase.com/de/points-table)
-// Goals: GK +120, DEF +100, MF +90, ST +80
+// ---------------------------------------------------------------------------
+// KICKBASE SCORING ENGINE
+// Source: kickbase.com/de/points-table
+//
+// HOW TO ADD NEW DATA:
+//   1. Add the field to PlayerStats type
+//   2. Find the entry below with getValue: null
+//   3. Replace null with: (p) => p.yourNewField || 0
+//   That's it. The calc functions pick it up automatically.
+// ---------------------------------------------------------------------------
+
+// Position-dependent goal/assist points (handled separately from flat entries)
 const KB_GOAL_PTS: Record<string, number> = { F: 80, M: 90, D: 100, G: 120 }
-// Assists: GK +55, DEF +45, MF +35, ST +35
 const KB_ASSIST_PTS: Record<string, number> = { F: 35, M: 35, D: 45, G: 55 }
 
-// Shared stat extraction for KB calculations
-function kbStats(p: PlayerStats) {
-  const pos = p.position || 'M'
-  return {
-    goalPts: KB_GOAL_PTS[pos] ?? 90,
-    assistPts: KB_ASSIST_PTS[pos] ?? 35,
-    shotsOnTarget: p.shots_on_target || 0,                              // +12 Torschuss aufs Tor
-    shotsOffTarget: Math.max(0, (p.total_shots || 0) - (p.shots_on_target || 0)), // +5 Torschuss vorbei/geblockt avg
-    bigChancesCreated: p.big_chances_created || 0,                      // +15 Großchance kreiert
-    bigChancesMissed: p.big_chances_missed || 0,                        // -15 Großchance vergeben
-    keyPasses: p.key_passes || 0,                                       // +5  Torschussvorlage
-    crosses: p.accurate_crosses || 0,                                   // +3  Erfolgreiche Flanke
-    dribbles: p.successful_dribbles || 0,                               // +5  Gegner ausgedribbelt
-    recovery: p.ball_recovery || 0,                                     // +5  Ballgewinn
-    tacklesWon: p.tackles_won || 0,                                     // +5  Gewonnener Zweikampf
-    interceptions: p.interceptions || 0,                                // +2  Pass abgefangen (in/außer 16er avg)
-    clearances: p.clearances || 0,                                      // +4  Geklärt (in/außer 16er avg)
-    longBalls: p.accurate_long_balls || 0,                              // +1  Präziser langer Pass
-    finalThirdPasses: p.accurate_final_third_passes || 0,               // +1  Pass vorderes Drittel
-    fouls: p.fouls || 0,                                                // -2  Foul
-    yellows: p.yellow_cards || 0,                                       // -10 Gelbe Karte
-    reds: p.red_cards || 0,                                             // -50 Gelb-Rot / Rote Karte
-  }
+export type KBEntry = {
+  short_name: string        // matches kickbase CSV short_name
+  name: string              // German display name
+  pts: number               // points per occurrence
+  getValue: ((p: PlayerStats) => number) | null  // null = data not yet available
+  dataNeeded?: string       // what DB field/scraper change is needed
+  note?: string             // why we map it this way (estimates, approximations)
 }
 
-function kbCalc(s: ReturnType<typeof kbStats>, goals: number, assists: number): number {
-  return (
-    goals * s.goalPts +
-    assists * s.assistPts +
-    s.shotsOnTarget * 12 +
-    s.shotsOffTarget * 5 +
-    s.bigChancesCreated * 15 +
-    s.bigChancesMissed * (-15) +
-    s.keyPasses * 5 +
-    s.crosses * 3 +
-    s.dribbles * 5 +
-    s.recovery * 5 +
-    s.tacklesWon * 5 +
-    s.interceptions * 2 +
-    s.clearances * 4 +
-    s.longBalls * 1 +
-    s.finalThirdPasses * 1 +
-    s.fouls * (-2) +
-    s.yellows * (-10) +
-    s.reds * (-50)
-  )
+// All non-goal/assist KB scoring entries.
+// Entries with getValue: null are placeholders — add getValue when data arrives.
+export const KB_ENTRIES: KBEntry[] = [
+
+  // ── SHOTS ─────────────────────────────────────────────────────────────────
+  { short_name: 'shot_on_target',  name: 'Torschuss (aufs Tor)',    pts: 12,  getValue: p => p.shots_on_target || 0 },
+  { short_name: 'shot_near_miss',  name: 'Torschuss knapp vorbei',  pts: 10,  getValue: null, dataNeeded: 'near_miss_shots count from Sofascore' },
+  { short_name: 'shot_blocked',    name: 'Torschuss geblockt',       pts: 8,   getValue: null, dataNeeded: 'blocked_shots count from Sofascore' },
+  { short_name: 'shot_wide',       name: 'Torschuss weit vorbei',    pts: 5,   getValue: p => Math.max(0, (p.total_shots || 0) - (p.shots_on_target || 0)), note: 'Approximation: all off-target shots (includes near-miss and blocked)' },
+
+  // ── CHANCES ───────────────────────────────────────────────────────────────
+  { short_name: 'big_chance_created', name: 'Großchance kreiert',   pts: 15,  getValue: p => p.big_chances_created || 0 },
+  { short_name: 'big_chance_missed',  name: 'Großchance vergeben',  pts: -15, getValue: p => p.big_chances_missed || 0 },
+
+  // ── PASSING ───────────────────────────────────────────────────────────────
+  { short_name: 'shot_assist',         name: 'Torschussvorlage',          pts: 5, getValue: p => p.key_passes || 0 },
+  { short_name: 'accurate_long_pass',  name: 'Präziser langer Pass',      pts: 1, getValue: p => p.accurate_long_balls || 0 },
+  { short_name: 'pass_final_third',    name: 'Pass vorderes Drittel',     pts: 1, getValue: p => p.accurate_final_third_passes || 0 },
+  { short_name: 'pass_opponent_half',  name: 'Pass in gegnerische Hälfte',pts: 1, getValue: null, dataNeeded: 'accurate_passes_opponent_half from Sofascore' },
+  { short_name: 'corner_won',          name: 'Ecke rausgeholt',           pts: 1, getValue: null, dataNeeded: 'corners_won from Sofascore' },
+
+  // ── CROSSING ──────────────────────────────────────────────────────────────
+  { short_name: 'successful_cross', name: 'Erfolgreiche Flanke',    pts: 3,  getValue: p => p.accurate_crosses || 0 },
+  { short_name: 'cross_blocked',    name: 'Flanke geblockt',        pts: 2,  getValue: null, dataNeeded: 'blocked_crosses count (total_crosses - accurate_crosses is inaccurate, not all become blocked)' },
+
+  // ── DRIBBLING ─────────────────────────────────────────────────────────────
+  { short_name: 'opponent_dribbled', name: 'Gegner ausgedribbelt',  pts: 5,  getValue: p => p.successful_dribbles || 0 },
+  { short_name: 'dribbled_past',     name: 'Ausgespielt worden',    pts: -3, getValue: null, dataNeeded: 'times_dribbled_past from Sofascore' },
+
+  // ── DEFENSE ───────────────────────────────────────────────────────────────
+  { short_name: 'duel_won',              name: 'Gewonnener Zweikampf',          pts: 5,  getValue: p => p.tackles_won || 0 },
+  { short_name: 'ball_recovery',         name: 'Ballgewinn',                    pts: 5,  getValue: p => p.ball_recovery || 0 },
+  { short_name: 'interception_box',      name: 'Pass abgefangen (im 16er)',     pts: 3,  getValue: p => Math.round((p.interceptions || 0) * 0.3), note: '~30% of interceptions estimated in box' },
+  { short_name: 'interception_outside_box', name: 'Pass abgefangen (außerhalb)',pts: 1,  getValue: p => Math.round((p.interceptions || 0) * 0.7), note: '~70% of interceptions estimated outside box' },
+  { short_name: 'clearance_box',         name: 'Geklärt (im 16er)',             pts: 5,  getValue: p => Math.round((p.clearances || 0) * 0.4), note: '~40% of clearances estimated in box' },
+  { short_name: 'clearance_outside_box', name: 'Geklärt (außerhalb 16er)',      pts: 3,  getValue: p => Math.round((p.clearances || 0) * 0.6), note: '~60% of clearances estimated outside box' },
+  { short_name: 'aerial_duel_won',       name: 'Luftzweikampf gewonnen',        pts: 3,  getValue: null, dataNeeded: 'aerial_duels_won count (have pct, need total aerial duels count)' },
+  { short_name: 'aerial_duel_lost',      name: 'Luftzweikampf verloren',        pts: -1, getValue: null, dataNeeded: 'aerial_duels_lost count (have pct, need total aerial duels count)' },
+  { short_name: 'last_man_tackle',       name: 'Zweikampf als letzter Mann',    pts: 15, getValue: null, dataNeeded: 'last_man_tackles from Sofascore (rare, high value)' },
+  { short_name: 'goal_line_clearance',   name: 'Auf der Linie geklärt',         pts: 15, getValue: null, dataNeeded: 'goal_line_clearances from Sofascore (rare, high value)' },
+
+  // ── PENALTIES ─────────────────────────────────────────────────────────────
+  { short_name: 'penalty_won',      name: 'Elfmeter rausgeholt',    pts: 30,  getValue: null, dataNeeded: 'penalties_won from Sofascore' },
+  { short_name: 'penalty_conceded', name: 'Elfmeter verschuldet',   pts: -45, getValue: null, dataNeeded: 'penalties_conceded from Sofascore' },
+  { short_name: 'penalty_missed',   name: 'Elfmeter verschossen',   pts: -60, getValue: null, dataNeeded: 'penalties_missed from Sofascore' },
+
+  // ── GAME RESULTS (per player) ─────────────────────────────────────────────
+  { short_name: 'match_won',       name: 'Spiel gewonnen',         pts: 15,  getValue: null, dataNeeded: 'wins_played count per player (games played × win rate from team data)' },
+  { short_name: 'match_lost',      name: 'Spiel verloren',         pts: -15, getValue: null, dataNeeded: 'losses_played count per player' },
+  { short_name: 'starting_eleven', name: 'Startelf',               pts: 5,   getValue: null, dataNeeded: 'starts count from Sofascore (separate from appearances)' },
+  { short_name: 'substitution',    name: 'Eingewechselt',          pts: 2,   getValue: null, dataNeeded: 'sub_appearances count (appearances - starts)' },
+  { short_name: 'minutes_bonus',   name: 'Minutenbonus',           pts: 1,   getValue: null, dataNeeded: 'per-game minutes bands (e.g. 1pt per 15min played)' },
+
+  // ── CLEAN SHEETS (per player) ─────────────────────────────────────────────
+  { short_name: 'clean_sheet_def', name: 'Zu null gespielt (ABW)', pts: 3,   getValue: null, dataNeeded: 'clean_sheets count per player from match data' },
+  { short_name: 'clean_sheet_mid', name: 'Zu null gespielt (MF)',  pts: 2,   getValue: null, dataNeeded: 'clean_sheets count per player from match data' },
+  { short_name: 'clean_sheet_fwd', name: 'Zu null gespielt (ANG)', pts: 1,   getValue: null, dataNeeded: 'clean_sheets count per player from match data' },
+  { short_name: 'goal_conceded',   name: 'Tor kassiert',           pts: -5,  getValue: null, dataNeeded: 'goals_conceded per player from match data (outfield: when on pitch)' },
+
+  // ── ERRORS ────────────────────────────────────────────────────────────────
+  { short_name: 'error_leading_goal',  name: 'Fehler vor Gegentor',   pts: -45, getValue: null, dataNeeded: 'errors_leading_to_goal from Sofascore' },
+  { short_name: 'error_before_shot',   name: 'Fehler vor Torschuss',  pts: -15, getValue: null, dataNeeded: 'errors_leading_to_shot from Sofascore' },
+  { short_name: 'own_goal',            name: 'Eigentor',              pts: -60, getValue: null, dataNeeded: 'own_goals from Sofascore' },
+
+  // ── NEGATIVE ACTIONS ──────────────────────────────────────────────────────
+  { short_name: 'ball_loss',     name: 'Ballverlust',       pts: -1, getValue: p => p.possession_lost || 0 },
+  { short_name: 'foul',         name: 'Foul',              pts: -2, getValue: p => p.fouls || 0 },
+  { short_name: 'offside',      name: 'Abseits',           pts: -3, getValue: null, dataNeeded: 'offsides count from Sofascore' },
+  { short_name: 'yellow_card',  name: 'Gelbe Karte',       pts: -10, getValue: p => p.yellow_cards || 0 },
+  { short_name: 'second_yellow_card', name: 'Gelb-Rot Karte', pts: -50, getValue: p => p.red_cards || 0 },
+]
+
+// Derived: how many entries are currently mapped vs total
+export const KB_COVERAGE = {
+  mapped: KB_ENTRIES.filter(e => e.getValue !== null).length,
+  total: KB_ENTRIES.length,
+}
+
+// ---------------------------------------------------------------------------
+// Calculation — goals/assists handled separately (position-dependent)
+// ---------------------------------------------------------------------------
+
+function kbSum(p: PlayerStats): number {
+  return KB_ENTRIES.reduce((sum, entry) => {
+    if (!entry.getValue) return sum
+    return sum + entry.pts * entry.getValue(p)
+  }, 0)
 }
 
 // Estimated Kickbase points from actual season stats
 export function calcKickbasePoints(p: PlayerStats): number {
-  const s = kbStats(p)
-  return kbCalc(s, p.goals || 0, p.assists || 0)
+  const pos = p.position || 'M'
+  return (
+    (p.goals || 0) * (KB_GOAL_PTS[pos] ?? 90) +
+    (p.assists || 0) * (KB_ASSIST_PTS[pos] ?? 35) +
+    kbSum(p)
+  )
 }
 
-// Expected Kickbase points based on xG/xA (what player "should have" earned)
+// Expected Kickbase points — swaps goals→xG and assists→xA, rest identical
 export function calcExpectedKickbasePoints(p: PlayerStats): number {
-  const s = kbStats(p)
-  return kbCalc(s, p.expected_goals || 0, p.expected_assists || 0)
+  const pos = p.position || 'M'
+  return (
+    (p.expected_goals || 0) * (KB_GOAL_PTS[pos] ?? 90) +
+    (p.expected_assists || 0) * (KB_ASSIST_PTS[pos] ?? 35) +
+    kbSum(p)
+  )
 }
 
 // KB Points per 90 min
@@ -215,7 +282,7 @@ export function calcExpectedKickbaseP90(p: PlayerStats): number {
   return (calcExpectedKickbasePoints(p) / min) * 90
 }
 
-// Underperformance score: positive = underperformed xG/xA (bounce-back candidate)
+// Underperformance: positive = underperformed xG/xA (bounce-back candidate)
 export function calcKickbaseUnderperformance(p: PlayerStats): number {
   return calcExpectedKickbasePoints(p) - calcKickbasePoints(p)
 }
