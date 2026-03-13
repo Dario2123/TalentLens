@@ -38,8 +38,8 @@ export function findUnexpectedParams(
 ): string[] {
   const allowedSet = new Set(allowed)
   const unexpected: string[] = []
-  for (const key of params.keys()) {
+  Array.from(params.keys()).forEach(key => {
     if (!allowedSet.has(key)) unexpected.push(key)
-  }
+  })
   return unexpected
 }
