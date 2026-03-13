@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
 import {
   PlayerStats,
   calcKickbasePoints, calcExpectedKickbasePoints,
@@ -42,13 +41,11 @@ function KickbaseScoutInner() {
     setPlayers([])
     setLoading(true)
     async function load() {
-      const { data } = await supabase
-        .from('players')
-        .select('*, player_stats(*)')
-        .eq('league', currentLeague)
-      if (data) {
-        const flat = data.map((p: any) => ({ ...p, ...(p.player_stats?.[0] ?? {}) }))
-        setPlayers(flat)
+      const params = new URLSearchParams({ league: currentLeague, limit: '2000' })
+      const res = await fetch(`/api/players?${params}`)
+      if (res.ok) {
+        const data = await res.json()
+        setPlayers(data)
       }
       setLoading(false)
     }
@@ -74,7 +71,6 @@ function KickbaseScoutInner() {
     else { setSortCol(col); setSortDir('desc') }
   }
 
-  // Ranking: sorted by selected column
   const ranked = useMemo(() => {
     return [...enriched].sort((a, b) => {
       const av = (a as any)[sortCol] ?? 0
@@ -83,12 +79,10 @@ function KickbaseScoutInner() {
     })
   }, [enriched, sortCol, sortDir])
 
-  // Value Picks: underperformed xG/xA but have high xKB potential, min 270 min
   const valuePicks = useMemo(() => {
     return [...enriched]
       .filter(p => p.underperf > 20)
       .sort((a, b) => {
-        // Sort by: high xKbP90 AND high underperformance
         const scoreA = a.xKbP90 * 0.6 + (a.underperf / 5) * 0.4
         const scoreB = b.xKbP90 * 0.6 + (b.underperf / 5) * 0.4
         return scoreB - scoreA
@@ -203,7 +197,6 @@ function ScoringCoverageBanner() {
   const missingEntries = KB_ENTRIES.filter(e => e.getValue === null)
   const coveragePct = Math.round((KB_COVERAGE.mapped / KB_COVERAGE.total) * 100)
 
-  // Position-dependent entries shown separately
   const POS_ENTRIES = [
     { label: 'Tor TW', pts: 120, color: '#c084fc' },
     { label: 'Tor AV', pts: 100, color: '#facc15' },
@@ -216,7 +209,6 @@ function ScoringCoverageBanner() {
 
   return (
     <div style={{ marginBottom: '24px' }}>
-      {/* Mapped entries pill strip */}
       <div style={{
         background: 'rgba(0,255,135,0.04)',
         border: '1px solid rgba(0,255,135,0.12)',
@@ -241,7 +233,6 @@ function ScoringCoverageBanner() {
         </div>
       </div>
 
-      {/* Coverage bar + missing toggle */}
       <div style={{
         background: 'rgba(0,0,0,0.3)',
         border: '1px solid rgba(0,255,135,0.08)',
@@ -275,7 +266,6 @@ function ScoringCoverageBanner() {
         </button>
       </div>
 
-      {/* Missing entries expandable */}
       {showMissing && (
         <div style={{
           background: '#060f1a',
